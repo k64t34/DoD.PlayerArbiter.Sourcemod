@@ -1,8 +1,8 @@
 "Phrases"
 {
-  "Melee"
+  "Restart"
   {
-    "en"    "Melee till victory"
-    "ru"    "Рукопашный бой до победы"
+    "en"    "Restart score"
+    "ru"    "Рестарт"
   }
 }

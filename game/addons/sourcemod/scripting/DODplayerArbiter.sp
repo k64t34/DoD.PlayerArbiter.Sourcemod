@@ -1,14 +1,17 @@
 #define DEBUG 1
+#define IGNORE_BOTS 1
+#define NO_COMMANDS 1
 #define PLUGIN_VERSION "1.0"
 #define PLUGIN_NAME "DoD player arbiter"
 #define GAME_DOD
-#define SND_GONG "k64t\\knifefinal\\knifefinal.mp3" 
-#define MSG1 "It`s time"
+#define SND_GONG "k64t\\whistle.mp3" 
+#define MSG_RESTART "Restart"
 #include "k64t"
 // Global Var
 float PlayerSpawnPosition[MAX_PLAYERS][3];
 int PlayerTeam[MAX_PLAYERS];
 int TeamHumanPlayerCount[DOD_TEAM_AXIS+1];
+char sndGong[]={SND_GONG};
 //ConVar 
 ConVar sm_arbiter_minPlayer_to_start_score;
 int minPlayer_to_start_score=0;
@@ -28,10 +31,10 @@ DebugPrint("OnPluginStart");
 RegConsoleCmd("showHcount", cmdShowTeamHumanPlayerCount);
 #endif 
 LoadTranslations("DODplayerArbiter.phrases");
-//char buffer[MAX_FILENAME_LENGHT];
-//Format(buffer, MAX_FILENAME_LENGHT, /*"download\\*/"sound\\%s",SND_GONG);	
-//AddFileToDownloadsTable(buffer);
-//PrecacheSound(sndGong,true);
+char buffer[MAX_FILENAME_LENGHT];
+Format(buffer, MAX_FILENAME_LENGHT,"sound\\%s",sndGong);	
+AddFileToDownloadsTable(buffer);
+PrecacheSound(sndGong,true);
 sm_arbiter_minPlayer_to_start_score = CreateConVar("sm_arbiter_minPlayer_to_start_score", "0", "Count of player to start score",_,true,0.0/*,true,float(MaxClients)*/);
 if (sm_arbiter_minPlayer_to_start_score != null)
 {
@@ -63,7 +66,7 @@ void CalculateTeamHumanPlayerCount(){
 	{
 		if (IsClientInGame(i))
 		{
-			#if !defined DEBUG
+			#if defined IGNORE_BOTS
 			if (!IsFakeClient(i))
 			#endif	
 			{
@@ -79,7 +82,7 @@ void CalculateTeamHumanPlayerCount(){
 }
 public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcast){
 	int client=GetClientOfUserId(event.GetInt("userid"));
-	#if !defined DEBUG
+	#if defined IGNORE_BOTS
 	if (!IsFakeClient(client))
 	#endif	
 	{
@@ -99,16 +102,17 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 			PrintToServer("%d + %d %d",TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
 			#endif			
 			if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score)
-			{		
-			
+			{					
 				//SetTeamScore(DOD_TEAM_ALLIES, 0);//Reset score
 				//SetTeamScore(DOD_TEAM_AXIS, 0);				
 				//SetTeamRoundsWon(DOD_TEAM_ALLIES, 0);
-				//SetTeamRoundsWon(DOD_TEAM_AXIS, 0);		
-
-
+				//SetTeamRoundsWon(DOD_TEAM_AXIS, 0);
 				//Если состояние раунда между старт и победа. Если состояние раунда бонус, то только очистить счет		
+				#if !defined NO_COMMANDS				
 				ServerCommand("mp_clan_restartround 10");//Restart round
+				#else
+				PrintToServer("----------------\nmp_clan_restartround 10\n-----------------");					
+				#endif
 			}
 		}
 	}
@@ -118,7 +122,7 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 }	
 public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){
 	int client=GetClientOfUserId(event.GetInt("userid"));
-	#if !defined DEBUG
+	#if defined IGNORE_BOTS
 	if (!IsFakeClient(client))
 	#endif	
 	{
@@ -153,7 +157,8 @@ void ShowTeamHumanPlayerCount (){	PrintToServer("ALLIES=%d\tAXIS=%d",TeamHumanPl
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 
-
+EmitSoundToAll(SND_GONG);	
+	PrintHintTextToAll("%t",MSG1);
 
 
 
