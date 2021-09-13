@@ -5,4 +5,14 @@
     "en"    "Restart score"
     "ru"    "Рестарт"
   }
+  "Start scoring"
+  {
+    "en"    "Start scoring"
+    "ru"    "Начался подсчет очков"
+  }
+    "Stop scoring"
+  {
+    "en"    "Stop scoring"
+    "ru"    "Подсчет очков остановлен"
+  }
 }

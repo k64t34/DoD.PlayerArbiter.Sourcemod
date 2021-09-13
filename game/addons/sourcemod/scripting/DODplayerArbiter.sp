@@ -1,17 +1,25 @@
-#define DEBUG 1
-#define IGNORE_BOTS 1
-#define NO_COMMANDS 1
+#define nDEBUG 1
 #define PLUGIN_VERSION "1.0"
 #define PLUGIN_NAME "DoD player arbiter"
 #define GAME_DOD
+#include "k64t"
+#define IGNORE_BOTS 1
+#define noNO_COMMANDS 1
+
 #define SND_GONG "k64t\\whistle.mp3" 
 #define MSG_RESTART "Restart"
-#include "k64t"
+#define MSG_Start_scoring	"Start scoring"
+#define MSG_Stop_scoring	"Stop scoring"
+
+#include "DODplayerArbiter.TeamScore.inc" 
+#include "DODplayerArbiter.PlayerSpawn.inc"
+
 // Global Var
-float PlayerSpawnPosition[MAX_PLAYERS][3];
 int PlayerTeam[MAX_PLAYERS];
-int TeamHumanPlayerCount[DOD_TEAM_AXIS+1];
+int TeamHumanPlayerCount[DOD_TEAMS_COUNT];
 char sndGong[]={SND_GONG};
+bool g_Scoring=false;
+bool g_1stRestart=false;
 //ConVar 
 ConVar sm_arbiter_minPlayer_to_start_score;
 int minPlayer_to_start_score=0;
@@ -43,22 +51,27 @@ if (sm_arbiter_minPlayer_to_start_score != null)
 	minPlayer_to_start_score=GetConVarInt(sm_arbiter_minPlayer_to_start_score);
 }
 //HookEvent("dod_round_win", Event_RoundWin, EventHookMode_Post);
-//HookEvent("player_spawn",		Event_PlayerSpawn,		EventHookMode_Post);
-HookEvent("player_team",	Event_PlayerTeam,	EventHookMode_Post);// A player changed his team  https://wiki.alliedmods.net/Generic_Source_Events#player_team
-HookEvent("player_changeclass",	Event_PlayerClass,	EventHookMode_Post);
+HookEvent("player_spawn",			Event_PlayerSpawn,	EventHookMode_Post);
+HookEvent("player_team",			Event_PlayerTeam,	EventHookMode_Post);// A player changed his team  https://wiki.alliedmods.net/Generic_Source_Events#player_team
+HookEvent("player_changeclass",		Event_PlayerClass,	EventHookMode_Post);
 //HookEvent("player_death", Event_RoundWin, EventHookMode_Post);
 }
 //public void OnPluginEnd(){}
 public void OnMapStart(){
 	TeamHumanPlayerCount[DOD_TEAM_ALLIES]=0;
 	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;
-	for (int client = 1; client <=MaxClients ; client++)PlayerTeam[client]=0;	
+	GetTeamsScore();	
+	for (int client = 1; client <=MaxClients ; client++)PlayerTeam[client]=0;
 	#if defined DEBUG
 	CalculateTeamHumanPlayerCount();
 	#endif
+	if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS] >= minPlayer_to_start_score)
+	{
+		g_Scoring=true;
+	}
+	g_1stRestart=false;
 }
-//public void Event_PlayerSpawn(Event event, const char[] name,  bool dontBroadcast){}
-void CalculateTeamHumanPlayerCount(){
+stock void CalculateTeamHumanPlayerCount(){
 	TeamHumanPlayerCount[DOD_TEAM_ALLIES]=0;
 	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;
 	int Team;
@@ -72,8 +85,7 @@ void CalculateTeamHumanPlayerCount(){
 			{
 			Team=GetClientTeam(i);
 			PlayerTeam[i]=Team;	
-			TeamHumanPlayerCount[Team]++;
-			
+			TeamHumanPlayerCount[Team]++;			
 			}
 		}			
 	}
@@ -87,9 +99,9 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 	if (!IsFakeClient(client))
 	#endif	
 	{
-		#if defined DEBUG
-		PrintToServer("PlayerTeam[%d]=%d",client,PlayerTeam[client]);
-		#endif	
+		//#if defined DEBUG
+		//PrintToServer("PlayerTeam[%d]=%d",client,PlayerTeam[client]);
+		//#endif	
 		if (PlayerTeam[client]==0)
 		{
 			int Team=GetClientTeam(client);			
@@ -101,29 +113,37 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 			TeamHumanPlayerCount[Team]++;	
 			#if defined DEBUG
 			PrintToServer("%d + %d %d",TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
-			#endif			
-			if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score)
-			{					
-				//SetTeamScore(DOD_TEAM_ALLIES, 0);//Reset score
-				//SetTeamScore(DOD_TEAM_AXIS, 0);				
-				//SetTeamRoundsWon(DOD_TEAM_ALLIES, 0);
-				//SetTeamRoundsWon(DOD_TEAM_AXIS, 0);
-				//Если состояние раунда между старт и победа. Если состояние раунда бонус, то только очистить счет		
-				#if !defined NO_COMMANDS				
-				ServerCommand("mp_clan_restartround 10");//Restart round
-				#else
-				PrintToServer("----------------\nmp_clan_restartround 10\n-----------------");					
-				#endif
-				EmitSoundToAll(SND_GONG);	
-				PrintHintTextToAll("%t",MSG_RESTART);
-				#if defined DEBUG
-				ShowTeamHumanPlayerCount();
-				#endif
+			#endif	
+			if (!g_Scoring){		
+				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score)				
+					StartScoring();
 			}
 		}
-	}
-	
+	}	
 }	
+void StartScoring(){
+	g_Scoring=true;
+	PrintHintTextToAll("%t",MSG_Start_scoring);
+	//Если состояние раунда между старт и победа. Если состояние раунда бонус, то только очистить счет
+	if (g_1stRestart)
+	{
+		SetTeamsScore();	
+	}
+	else
+	{
+		#if !defined NO_COMMANDS				
+		ServerCommand("mp_clan_restartround 10");//Restart round
+		#else
+		PrintToServer("----------------\nmp_clan_restartround 10\n-----------------");					
+		#endif
+		PrintHintTextToAll("%t",MSG_RESTART);
+		g_1stRestart=true;
+	}					
+	EmitSoundToAll(sndGong);					
+	#if defined DEBUG
+	ShowTeamHumanPlayerCount();
+	#endif
+}
 public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){
 	int client=GetClientOfUserId(event.GetInt("userid"));
 	#if defined IGNORE_BOTS
@@ -139,32 +159,41 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 			#if defined DEBUG
 			ShowTeamHumanPlayerCount();
 			#endif
+			if (g_Scoring)
+			{		
+				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1)
+				{			
+					g_Scoring=false;
+					GetTeamsScore();
+					PrintHintTextToAll("%t",MSG_Stop_scoring);
+				}
+				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
+				{
+					g_1stRestart=false;
+					ReSetTeamsScore();
+				}
+			}
 		}	
 	}	
 }
 public void OnCvar_minPlayer_to_start_score(ConVar convar, char[] oldValue, char[] newValue){
 	minPlayer_to_start_score=StringToInt(newValue);
-	
-	// TODO: Test current condition coresspond new value minPlayer_to_start_score
-	//if (StringToInt(oldValue)!=minPlayer_to_start_score)
-	//{
-	//	minPlayer_to_start_score=minPlayer_to_start_score;
-	//}	
+	if (!g_Scoring)	
+		if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]>=minPlayer_to_start_score)
+			StartScoring();
 }
 #if defined DEBUG
 public  Action cmdShowTeamHumanPlayerCount (int client, int args){
 	ShowTeamHumanPlayerCount();	
 	return Plugin_Handled;
 }
-void ShowTeamHumanPlayerCount (){	PrintToServer("ALLIES=%d\tAXIS=%d",TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS]);}
-
+void ShowTeamHumanPlayerCount (){PrintToServer("ALLIES=%d\tAXIS=%d",TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS]);}
 #endif 
+
 #endinput
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 
 
-EmitSoundToAll(SND_GONG);	
-	PrintHintTextToAll("%t",MSG1);
 
 
 
@@ -175,33 +204,6 @@ EmitSoundToAll(SND_GONG);
 
 
 
-public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcast){	
-	char EventName[MAX_CLIENT_NAME];
-	GetEventName(event,EventName,MAX_CLIENT_NAME);
-	char ClientName[MAX_CLIENT_NAME];
-	GetClientName(GetClientOfUserId(event.GetInt("userid")), ClientName, MAX_CLIENT_NAME);
-	DebugPrint("<%s> %d - %s.",EventName,GetClientOfUserId(event.GetInt("userid")),ClientName);	
-
-	TeamHumanPlayerCount[GetClientTeam(GetClientOfUserId(event.GetInt("userid")))]++;
-	ShowTeamHumanPlayerCount();
-
-	DebugPrint("%d - %d.",GetClientOfUserId(event.GetInt("userid")),
-	GetClientTeam(GetClientOfUserId(event.GetInt("userid"))));	
-}	
-public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){	
-	char ClientName[MAX_CLIENT_NAME];
-	GetClientName(GetClientOfUserId(event.GetInt("userid")), ClientName, MAX_CLIENT_NAME);
-	char EventName[MAX_CLIENT_NAME];
-	GetEventName(event,EventName,MAX_CLIENT_NAME);
-	DebugPrint("<%s> %d - %s.",EventName,GetClientOfUserId(event.GetInt("userid")),ClientName);	
-	int oldTeam=event.GetInt("oldteam");	
-	int newTeam=event.GetInt("team");	
-	if ((oldTeam==DOD_TEAM_ALLIES || oldTeam==DOD_TEAM_AXIS) && newTeam!=oldTeam )	
-	{
-		TeamHumanPlayerCount[oldTeam]--;
-	    ShowTeamHumanPlayerCount();
-	}
-}
 
 
 

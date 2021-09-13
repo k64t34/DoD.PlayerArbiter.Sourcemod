@@ -1,0 +1,44 @@
+int TeamScore[DOD_TEAMS_COUNT][4];
+#define TEAM_SCORE		0
+#define TEAM_ROUNDWINS	1
+#define TEAM_KILLS		2
+#define TEAM_DEATHS		3
+
+stock void ReSetTeamsScore(){
+	#if defined DEBUG
+	PrintToServer("ReSetTeamsScore");
+	#endif
+	TeamScore[DOD_TEAM_ALLIES][TEAM_SCORE]=0;
+	TeamScore[DOD_TEAM_ALLIES][TEAM_ROUNDWINS]=0;
+	TeamScore[DOD_TEAM_ALLIES][TEAM_KILLS]=0;
+	TeamScore[DOD_TEAM_ALLIES][TEAM_DEATHS]=0;
+	TeamScore[DOD_TEAM_AXIS][TEAM_SCORE]=0;
+	TeamScore[DOD_TEAM_AXIS][TEAM_ROUNDWINS]=0;
+	TeamScore[DOD_TEAM_AXIS][TEAM_KILLS]=0;
+	TeamScore[DOD_TEAM_AXIS][TEAM_DEATHS]=0;
+	SetTeamScore(DOD_TEAM_ALLIES, 0);
+	SetTeamScore(DOD_TEAM_AXIS, 0);				
+	SetTeamRoundsWon(DOD_TEAM_ALLIES, 0);
+	SetTeamRoundsWon(DOD_TEAM_AXIS, 0);
+	}
+stock void GetTeamsScore(){
+	TeamScore[DOD_TEAM_ALLIES][TEAM_SCORE]=GetTeamScore(DOD_TEAM_ALLIES);
+	TeamScore[DOD_TEAM_ALLIES][TEAM_ROUNDWINS]=GetTeamRoundsWon(DOD_TEAM_ALLIES);
+	//TeamScore[DOD_TEAM_ALLIES][TEAM_KILLS]=0;
+	//TeamScore[DOD_TEAM_ALLIES][TEAM_DEATHS]=0;
+	TeamScore[DOD_TEAM_AXIS][TEAM_SCORE]=GetTeamScore(DOD_TEAM_AXIS);
+	TeamScore[DOD_TEAM_AXIS][TEAM_ROUNDWINS]=GetTeamRoundsWon(DOD_TEAM_AXIS);
+	//TeamScore[DOD_TEAM_AXIS][TEAM_KILLS]=0;
+	//TeamScore[DOD_TEAM_AXIS][TEAM_DEATHS]=0;
+	}
+stock void SetTeamsScore(){
+	SetTeamScore(DOD_TEAM_ALLIES,		TeamScore[DOD_TEAM_ALLIES]	[TEAM_SCORE]);
+	SetTeamScore(DOD_TEAM_AXIS,			TeamScore[DOD_TEAM_AXIS]	[TEAM_ROUNDWINS]);	
+	SetTeamRoundsWon(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_SCORE]);
+	SetTeamRoundsWon(DOD_TEAM_AXIS,		TeamScore[DOD_TEAM_AXIS]	[TEAM_ROUNDWINS]);
+	//SetTeamKills(DOD_TEAM_ALLIES,		TeamScore[DOD_TEAM_ALLIES]	[TEAM_KILLS]);
+	//SetTeamKills(DOD_TEAM_AXIS,			TeamScore[DOD_TEAM_AXIS]	[TEAM_KILLS]);
+	//SetTeamDeaths(DOD_TEAM_ALLIES,		TeamScore[DOD_TEAM_ALLIES]	[TEAM_ROUNDWINS]);
+	//SetTeamDeaths(DOD_TEAM_AXIS,		TeamScore[DOD_TEAM_AXIS]	[TEAM_ROUNDWINS]);	
+	}	
+	
