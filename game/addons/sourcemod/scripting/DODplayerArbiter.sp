@@ -73,12 +73,13 @@ void CalculateTeamHumanPlayerCount(){
 			Team=GetClientTeam(i);
 			PlayerTeam[i]=Team;	
 			TeamHumanPlayerCount[Team]++;
+			
 			}
 		}			
 	}
 	#if defined DEBUG
 	ShowTeamHumanPlayerCount();
-	#endif
+	#endif	
 }
 public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcast){
 	int client=GetClientOfUserId(event.GetInt("userid"));
@@ -113,12 +114,15 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 				#else
 				PrintToServer("----------------\nmp_clan_restartround 10\n-----------------");					
 				#endif
+				EmitSoundToAll(SND_GONG);	
+				PrintHintTextToAll("%t",MSG_RESTART);
+				#if defined DEBUG
+				ShowTeamHumanPlayerCount();
+				#endif
 			}
 		}
 	}
-	#if defined DEBUG
-	ShowTeamHumanPlayerCount();
-	#endif
+	
 }	
 public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){
 	int client=GetClientOfUserId(event.GetInt("userid"));
@@ -140,10 +144,12 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 }
 public void OnCvar_minPlayer_to_start_score(ConVar convar, char[] oldValue, char[] newValue){
 	minPlayer_to_start_score=StringToInt(newValue);
-	if (StringToInt(oldValue)!=minPlayer_to_start_score)
-	{
-		minPlayer_to_start_score=minPlayer_to_start_score;
-	}	
+	
+	// TODO: Test current condition coresspond new value minPlayer_to_start_score
+	//if (StringToInt(oldValue)!=minPlayer_to_start_score)
+	//{
+	//	minPlayer_to_start_score=minPlayer_to_start_score;
+	//}	
 }
 #if defined DEBUG
 public  Action cmdShowTeamHumanPlayerCount (int client, int args){
