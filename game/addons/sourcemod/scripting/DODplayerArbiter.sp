@@ -2,6 +2,7 @@
 #define PLUGIN_VERSION "1.0"
 #define PLUGIN_NAME "DoD player arbiter"
 #define GAME_DOD
+#define USE_PLAYER
 #include "k64t"
 #define IGNORE_BOTS 1
 #define noNO_COMMANDS 1
@@ -27,7 +28,7 @@ public Plugin myinfo =
 {
     name = PLUGIN_NAME,
     author = "Kom64t",
-    description = "",
+    description = "Reset score",
     version = PLUGIN_VERSION,
     url = "https://github.com/k64t34/DoD.PlayerArbiter.Sourcemod.git"
 };
@@ -340,3 +341,4 @@ ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 }
 
 
+  
