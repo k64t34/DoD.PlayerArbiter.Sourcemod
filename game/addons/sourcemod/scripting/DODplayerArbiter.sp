@@ -61,7 +61,7 @@ HookEvent("player_changeclass",		Event_PlayerClass,	EventHookMode_Post);
 public void OnMapStart(){
 	TeamHumanPlayerCount[DOD_TEAM_ALLIES]=0;
 	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;
-	GetTeamsScore();	
+	StoreTeamsScore();	
 	for (int client = 1; client <=MaxClients ; client++)PlayerTeam[client]=0;
 	#if defined DEBUG
 	CalculateTeamHumanPlayerCount();
@@ -86,7 +86,7 @@ stock void CalculateTeamHumanPlayerCount(){
 			{
 			Team=GetClientTeam(i);
 			PlayerTeam[i]=Team;	
-			TeamHumanPlayerCount[Team]++;			
+			TeamHumanPlayerCount[Team]++;
 			}
 		}			
 	}
@@ -128,7 +128,7 @@ void StartScoring(){
 	//Если состояние раунда между старт и победа. Если состояние раунда бонус, то только очистить счет
 	if (g_1stRestart)
 	{
-		SetTeamsScore();	
+		ReStoreTeamsScore();	
 	}
 	else
 	{
@@ -165,7 +165,7 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1)
 				{			
 					g_Scoring=false;
-					GetTeamsScore();
+					StoreTeamsScore();
 					PrintHintTextToAll("%t",MSG_Stop_scoring);
 				}
 				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 

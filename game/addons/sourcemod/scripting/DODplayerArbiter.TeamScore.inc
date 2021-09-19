@@ -32,7 +32,7 @@ stock void ReSetTeamsScore(){
 		PlayerScore[client][PLAYER_DEATHS]=0;
 	}
 }
-stock void GetTeamsScore(){
+stock void StoreTeamsScore(){
 	TeamScore[DOD_TEAM_ALLIES][TEAM_SCORE]=GetTeamScore(DOD_TEAM_ALLIES);
 	TeamScore[DOD_TEAM_ALLIES][TEAM_ROUNDWINS]=GetTeamRoundsWon(DOD_TEAM_ALLIES);
 	//TeamScore[DOD_TEAM_ALLIES][TEAM_KILLS]=0;
@@ -57,7 +57,7 @@ stock void GetTeamsScore(){
 		}
 	}
 }
-stock void SetTeamsScore(){
+stock void ReStoreTeamsScore(){
 	SetTeamScore(DOD_TEAM_ALLIES,		TeamScore[DOD_TEAM_ALLIES]	[TEAM_SCORE]);
 	SetTeamScore(DOD_TEAM_AXIS,			TeamScore[DOD_TEAM_AXIS]	[TEAM_ROUNDWINS]);	
 	SetTeamRoundsWon(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_SCORE]);
