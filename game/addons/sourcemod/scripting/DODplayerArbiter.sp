@@ -56,6 +56,15 @@ HookEvent("player_spawn",			Event_PlayerSpawn,	EventHookMode_Post);
 HookEvent("player_team",			Event_PlayerTeam,	EventHookMode_Post);// A player changed his team  https://wiki.alliedmods.net/Generic_Source_Events#player_team
 HookEvent("player_changeclass",		Event_PlayerClass,	EventHookMode_Post);
 //HookEvent("player_death", Event_RoundWin, EventHookMode_Post);
+HookEvent("dod_round_start",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_round_active",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_restart_round",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_ready_restart",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_allies_ready",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_axis_ready",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_round_restart_seconds",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_round_win",		Event_PlayerClass,	EventHookMode_Post);
+
 }
 //public void OnPluginEnd(){}
 public void OnMapStart(){
@@ -63,6 +72,7 @@ public void OnMapStart(){
 	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;
 	StoreTeamsScore();	
 	for (int client = 1; client <=MaxClients ; client++)PlayerTeam[client]=0;
+	//TODO:Test Logic
 	#if defined DEBUG
 	CalculateTeamHumanPlayerCount();
 	#endif
@@ -341,4 +351,5 @@ ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 }
 
 
+  
   
