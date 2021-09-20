@@ -66,7 +66,7 @@ stock void ReStoreTeamsScore(){
 	//SetTeamKills(DOD_TEAM_AXIS,			TeamScore[DOD_TEAM_AXIS]	[TEAM_KILLS]);
 	//SetTeamDeaths(DOD_TEAM_ALLIES,		TeamScore[DOD_TEAM_ALLIES]	[TEAM_ROUNDWINS]);
 	//SetTeamDeaths(DOD_TEAM_AXIS,		TeamScore[DOD_TEAM_AXIS]	[TEAM_ROUNDWINS]);	
-	for (int client = 1; client <=MAXPLAYERS ; client++)
+	for (int client = 1; client <=MaxClients; client++)
 	{
 		if (IsValidClient(client)) 
 		{

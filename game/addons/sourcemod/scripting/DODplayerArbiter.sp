@@ -21,6 +21,12 @@ int TeamHumanPlayerCount[DOD_TEAMS_COUNT];
 char sndGong[]={SND_GONG};
 bool g_Scoring=false;
 bool g_1stRestart=false;
+#define roundWin		0	
+#define roundStart 		1
+#define roundActive		2
+#define roundRestart	3	
+int roundStatus=roundWin;
+
 //ConVar 
 ConVar sm_arbiter_minPlayer_to_start_score;
 int minPlayer_to_start_score=0;
@@ -56,14 +62,10 @@ HookEvent("player_spawn",			Event_PlayerSpawn,	EventHookMode_Post);
 HookEvent("player_team",			Event_PlayerTeam,	EventHookMode_Post);// A player changed his team  https://wiki.alliedmods.net/Generic_Source_Events#player_team
 HookEvent("player_changeclass",		Event_PlayerClass,	EventHookMode_Post);
 //HookEvent("player_death", Event_RoundWin, EventHookMode_Post);
-HookEvent("dod_round_start",		Event_PlayerClass,	EventHookMode_Post);
-HookEvent("dod_round_active",		Event_PlayerClass,	EventHookMode_Post);
-HookEvent("dod_restart_round",		Event_PlayerClass,	EventHookMode_Post);
-HookEvent("dod_ready_restart",		Event_PlayerClass,	EventHookMode_Post);
-HookEvent("dod_allies_ready",		Event_PlayerClass,	EventHookMode_Post);
-HookEvent("dod_axis_ready",		Event_PlayerClass,	EventHookMode_Post);
-HookEvent("dod_round_restart_seconds",		Event_PlayerClass,	EventHookMode_Post);
-HookEvent("dod_round_win",		Event_PlayerClass,	EventHookMode_Post);
+HookEvent("dod_round_start",		Event_Showevent,	EventHookMode_Post);
+HookEvent("dod_round_active",		Event_Showevent,	EventHookMode_Post);
+HookEvent("dod_restart_round",		Event_Showevent,	EventHookMode_Post);
+HookEvent("dod_round_win",		Event_Showevent,	EventHookMode_Post);
 
 }
 //public void OnPluginEnd(){}
@@ -201,8 +203,49 @@ public  Action cmdShowTeamHumanPlayerCount (int client, int args){
 void ShowTeamHumanPlayerCount (){PrintToServer("ALLIES=%d\tAXIS=%d",TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS]);}
 #endif 
 
+public void Event_Showevent(Event event, const char[] name, bool dontBroadcast){
+	LogError("Event [%s]",name);
+}
+
 #endinput
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
