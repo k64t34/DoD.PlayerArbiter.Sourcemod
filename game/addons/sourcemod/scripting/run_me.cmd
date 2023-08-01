@@ -1,0 +1,1 @@
+..\..\..\..\..\SourceModPawnCompilerPluginHelper\bin\Release\SMcompiler.exe DODplayerArbiter.sp 
