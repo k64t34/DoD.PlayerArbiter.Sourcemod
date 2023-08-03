@@ -1,20 +1,19 @@
 //*
-//* DoD:S Player arbiter for DODs
+//* DoD:S Players(bots)  arbiter for DODs
 //*
 //* Version 1.1
 //*
 //* Description:
-//*   1.0 2021 Plugin restart score when count of players rise to 6
+//*   1.0 2021 The plugin restart score when count of players rise to 6
 //*   1.1 2023 The plugin refresh  bots every minute, simply removing all useless ones (no frags, no flag capture/blocking, no bomb plant/defusing).
-//*   1.2 2023 Start, stop, resume scoring
-
-#define DEBUG 1
-#define PLUGIN_VERSION "1.1"
+//*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
+#define nDEBUG 1
+#define PLUGIN_VERSION "1.2"
 #define PLUGIN_NAME "DoD player arbiter"
 #define GAME_DOD
 #define USE_PLAYER
 #include "c:\Users\skorik\source\repos\smK64t\scripting\include\k64t"
-#define noIGNORE_BOTS 1 //for debug define IGNORE_BOTS
+#define IGNORE_BOTS 1 //for debug define IGNORE_BOTS
 #define noNO_COMMANDS 1
 #define REFRESH_BOT  1 //ver 1.1
 
@@ -23,29 +22,15 @@
 #define MSG_Start_scoring	"Start scoring"
 #define MSG_Stop_scoring	"Stop scoring"
 #define MSG_Resume_scoring	"Resume scoring" //ver 1.2
-
-//#include "DODplayerArbiter.TeamScore.inc" 
-//#include "DODplayerArbiter.PlayerSpawn.inc"
-
 // Global Var
 char g_PLUGIN_NAME[]=PLUGIN_NAME;
 int PlayerTeam[MAX_PLAYERS+1];				// Команда игрока
 int TeamHumanPlayerCount[DOD_TEAMS_COUNT];	// Number of human players in a team
-#if defined REFRESH_BOT
-int BotKills[MAX_PLAYERS+1];				// Number usefull action of bot in last minute (frags, flag capture/blocking,bomb plant/defusing)
-bool BotToKick[MAX_PLAYERS+1];				// Bot in the kick queue(by random timer)
-#endif
-char sndGong[]={SND_GONG};					// The sound of the beginning of scoring
+char sndGong[]=SND_GONG;					// The sound of the beginning of scoring
 bool g_Scoring=false;						// Scoring points 
 bool g_1stRestart=false;					// true - first round with scoring has already passed, false - no restart occur
 bool g_Restarting=false;					// Command _restart 10 was sent
 int g_RoundStatus=0;						// 0-Bonus,1-Start,2-Active
-int TeamScore[DOD_TEAMS_COUNT][2];
-int PlayerScore[MAX_PLAYERS+1][3]; 
-#define PLR_Point 0
-#define PLR_Kill  1
-#define PLR_Death 2
-
 //ConVar 
 ConVar sm_arbiter_minPlayer_to_start_score;
 int minPlayer_to_start_score=0;
@@ -57,11 +42,21 @@ public Plugin myinfo =
     version = PLUGIN_VERSION,
     url = "https://github.com/k64t34/DoD.PlayerArbiter.Sourcemod.git"
 };
+#include "DODplayerArbiter.TeamScore.inc" 
+//#include "DODplayerArbiter.PlayerSpawn.inc"
+#if defined REFRESH_BOT
+#include "DODplayerArbiter.Refreshbots.inc"
+#endif
+#if defined DEBUG
+char  g_LOG[] = "DODplayerArbiter.log";
+//TODO:GetPluginFilename(,g_LOG,sizeof(g_LOG)); and pass to k_debug 
+#endif 
 //***********************************************
 public void OnPluginStart(){
 //***********************************************
 #if defined DEBUG
 DebugPrint("OnPluginStart");
+LogToFile(g_LOG,"[%s]StartScoring",g_PLUGIN_NAME);
 RegConsoleCmd("showHcount", cmdPrintTeamHumanPlayerCount);
 #endif 
 LoadTranslations("DODplayerArbiter.phrases");
@@ -126,90 +121,7 @@ public void OnMapStart(){
 	CreateTimer(60.0,Refreshbot,0,TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	#endif 		
 }
-#if defined REFRESH_BOT
-//**************************************************
-public  Action Refreshbot(Handle timer, int client){
-//**************************************************
-#if defined DEBUG
-	PrintToServer("-----------");
-	PrintToServer("Refresh bot");
-	PrintToServer("-----------");
-#endif
-for (int i = 1;  i<=MaxClients ; i++) 
-	if (IsClientConnected(i)) 
-	if (!IsClientSourceTV(i))	
-	if (IsFakeClient(i)) 	
-		{			
-		#if defined DEBUG
-		char clientName[32];
-		GetClientName(i, clientName, 31);
-		PrintToServer("%d.%s kills=%d",i,clientName, BotKills[i]);	
-		#endif
-		if (BotKills[i]==0){BotToKick[i]=true;CreateTimer(GetRandomFloat(0.1,1.0)*59,Kickbot,i,TIMER_FLAG_NO_MAPCHANGE);}else {BotKills[i]=0;}
-	}
-}	
-public  Action Kickbot(Handle timer, int client){
-	if (BotToKick[client])
-	if (IsClientConnected(client)) 
-	if (IsFakeClient(client)) 
-	if (BotKills[client]==0)	
-	{
-	#if defined DEBUG
-	char clientName[32];
-	GetClientName(client, clientName, 31);
-	PrintToServer("#%d %s kills=%d -> kick",client,clientName, BotKills[client]);	
-	#endif		
-	KickClient(client);
-	}
-}
-public  void Event_player_killed(Event event, const char[] name,  bool dontBroadcast){
-int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));	
-BotKills[attacker]++;	
-//#if defined DEBUG
-//	char clientName[32];
-//	GetClientName(attacker, clientName, 31)	;
-//	PrintToServer("[%s] #%d %s %d",g_PLUGIN_NAME,attacker,clientName,BotKills[attacker] );
-//#endif
-int victim = GetClientOfUserId(GetEventInt(event, "victim"));	
-if (BotToKick[victim]) 
-if (IsClientConnected(victim)) 
-if (IsFakeClient(victim)) KickClient(victim);	
-}
-public  void Event_capture_blocked (Event event, const char[] name,  bool dontBroadcast){
-int blocker = GetClientOfUserId(GetEventInt(event, "blocker"));	
-BotKills[blocker]++;	
-}
-public  void Event_point_captured (Event event, const char[] name,  bool dontBroadcast){
-char cappers[32] ;	
-GetEventString(event, "cappers", cappers, 31, "");
-//PrintToServer("-----------------------------------------------------------");
-//PrintToServer("[%s]:[Event_point_captured] %s ",g_PLUGIN_NAME,cappers);
-for (int i=0;i!=31;i++)
-	{
-	int id=cappers[i];
-	if (id==0) break;
-	BotKills[id]++;	
-	//#if defined DEBUG
-	//char clientName[32];
-	//GetClientName(id, clientName, 31);
-	//PrintToServer("[%s]:[Event_point_captured] #%d %d %s",g_PLUGIN_NAME,i,id,clientName);
-	//#endif
-	}
 
-}
-public  void Event_bomb (Event event, const char[] name,  bool dontBroadcast){
-int userid=GetClientOfUserId(GetEventInt(event, "userid"));	
-BotKills[userid]++;	
-//#if defined DEBUG
-//	char clientName[32];
-//	GetClientName(userid, clientName, 31)	;
-//	char eventName[32];
-//	GetEventName(event, eventName, 31);
-//	PrintToServer("[%s]:[%s] #%d %s %d",g_PLUGIN_NAME,eventName,userid,clientName,BotKills[userid] );
-//#endif
-}
-
-#endif 
 //**************************************************
 stock void CalculateTeamHumanPlayerCount(){
 //**************************************************	
@@ -270,86 +182,52 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 			if (!g_Scoring){		
 				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score)				
 				{
-					StartScoring();
+					g_Scoring=true;
+					CreateTimer(3.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
 				}
 			}
 		}
 	}	
 }	
 //**************************************************
-void StartScoring(){
-//**************************************************	
-g_Scoring=true;
-if (g_RoundStatus==2 ) //Если состояние раунда между стартом и победой, то _restart
-	{
+Action  StartScoring(Handle timer){
+//**************************************************
+#if defined DEBUG
+LogToFile(g_PLUGIN_NAME,"[%s]StartScoring",g_PLUGIN_NAME);
+#endif	
+if (g_Scoring) 
+{
+	if (g_RoundStatus==2 ) //Если состояние раунда между стартом и победой, то _restart
+		{
+		#if defined DEBUG
+		PrintToServer("[%s]StartScoring RESTART_ROUND",g_PLUGIN_NAME);
+		#endif	
+		#if !defined NO_COMMANDS				
+		ServerCommand("mp_clan_restartround 10");//Restart round
+		g_Restarting=true;
+		#else
+		PrintToServer("----------------\nmp_clan_restartround 10\n-----------------");					
+		#endif
+		}
+	if (g_1stRestart)
+		{			
+		if (!g_Restarting)	ReStoreTeamsScore();
+		PrintToConsoleAll("[%s]: %s",g_PLUGIN_NAME,MSG_Resume_scoring);				
+		PrintHintTextToAll("%t",MSG_Resume_scoring);
+		}
+	else
+		{
+		g_1stRestart=true;	
+		if (!g_Restarting) ReSetTeamsScore();			
+		PrintHintTextToAll("%t",MSG_Start_scoring);
+		PrintToConsoleAll("[%s]: %s",g_PLUGIN_NAME,MSG_Start_scoring);			
+		}		
+	//EmitSoundToAll(sndGong);					
 	#if defined DEBUG
-	PrintToServer("[%s]StartScoring RESTART_ROUND",g_PLUGIN_NAME);
-	#endif	
-	#if !defined NO_COMMANDS				
-	ServerCommand("mp_clan_restartround 10");//Restart round
-	g_Restarting=true;
-	#else
-	PrintToServer("----------------\nmp_clan_restartround 10\n-----------------");					
+	PrintTeamHumanPlayerCount();
 	#endif
-	}
-if (g_1stRestart)
-	{			
-	if (!g_Restarting)	ReStoreTeamsScore();
-	PrintToConsoleAll("[%s]: %s",g_PLUGIN_NAME,MSG_Resume_scoring);				
-	PrintHintTextToAll("%t",MSG_Resume_scoring);
-	}
-else
-	{
-	g_1stRestart=true;	
-	if (!g_Restarting) ReSetTeamsScore();			
-	PrintHintTextToAll("%t",MSG_Start_scoring);
-	PrintToConsoleAll("[%s]: %s",g_PLUGIN_NAME,MSG_Start_scoring);			
-	}		
-//EmitSoundToAll(sndGong);					
-#if defined DEBUG
-PrintTeamHumanPlayerCount();
-#endif
 }
-void ReStoreTeamsScore(){
-#if defined DEBUG
-LogError("[%s]:ReStoreTeamsScore",g_PLUGIN_NAME);	
-LogError("[%s] TeamScore[ALLIES] = %d GetTeamScore()=%d",g_PLUGIN_NAME,TeamScore[DOD_TEAM_ALLIES][0],GetTeamScore(DOD_TEAM_ALLIES));	
-LogError("[%s] TeamScore[AXIS]   = %d GetTeamScore()=%d",g_PLUGIN_NAME,TeamScore[DOD_TEAM_AXIS][0],GetTeamScore(DOD_TEAM_AXIS));	
-#endif
-SetTeamScore(DOD_TEAM_ALLIES,TeamScore[DOD_TEAM_ALLIES][0]);
-SetTeamScore(DOD_TEAM_AXIS,TeamScore[DOD_TEAM_AXIS][0]);
-SetTeamRoundsWon(DOD_TEAM_ALLIES,TeamScore[DOD_TEAM_ALLIES][1]);
-SetTeamRoundsWon(DOD_TEAM_AXIS,TeamScore[DOD_TEAM_AXIS][1]);
-
-#if defined DEBUG
-LogError("[%s] TeamScore[ALLIES] = %d GetTeamScore()=%d",g_PLUGIN_NAME,TeamScore[DOD_TEAM_ALLIES][0],GetTeamScore(DOD_TEAM_ALLIES));	
-LogError("[%s] TeamScore[AXIS]   = %d GetTeamScore()=%d",g_PLUGIN_NAME,TeamScore[DOD_TEAM_AXIS][0],GetTeamScore(DOD_TEAM_AXIS));	
-#endif
-
-
-/*SetTeamScore(DOD_TEAM_ALLIES, GetRandomInt(10,100));
-SetTeamScore(DOD_TEAM_AXIS, GetRandomInt(10,100));
-SetTeamRoundsWon(DOD_TEAM_ALLIES,GetRandomInt(10,100));
-SetTeamRoundsWon(DOD_TEAM_AXIS, GetRandomInt(10,100));	
-*/
-
-
-}
-void StoreTeamsScore(){
-TeamScore[DOD_TEAM_ALLIES][0]=GetTeamScore(DOD_TEAM_ALLIES);	
-TeamScore[DOD_TEAM_AXIS][0]=GetTeamScore(DOD_TEAM_AXIS);	
-TeamScore[DOD_TEAM_ALLIES][1]=GetTeamRoundsWon(DOD_TEAM_ALLIES);	
-TeamScore[DOD_TEAM_AXIS][1]=GetTeamRoundsWon(DOD_TEAM_AXIS);	
-#if defined DEBUG
-LogError("[%s] TeamScore[ALLIES] = %d GetTeamScore()=%d",g_PLUGIN_NAME,TeamScore[DOD_TEAM_ALLIES][0],GetTeamScore(DOD_TEAM_ALLIES));	
-LogError("[%s] TeamScore[AXIS]   = %d GetTeamScore()=%d",g_PLUGIN_NAME,TeamScore[DOD_TEAM_AXIS][0],GetTeamScore(DOD_TEAM_AXIS));	
-#endif
-}
-void ReSetTeamsScore(){
-SetTeamScore(DOD_TEAM_ALLIES, 0);
-SetTeamScore(DOD_TEAM_AXIS, 0);
-SetTeamRoundsWon(DOD_TEAM_ALLIES,0);
-SetTeamRoundsWon(DOD_TEAM_AXIS, 0);		
+return Plugin_Continue;
 }
 //**************************************************
 public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){
@@ -404,7 +282,10 @@ public void OnCvar_minPlayer_to_start_score(ConVar convar, char[] oldValue, char
 	minPlayer_to_start_score=StringToInt(newValue);
 	if (!g_Scoring)	
 		if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]>=minPlayer_to_start_score)
-			StartScoring();
+		{
+			g_Scoring=true;
+			CreateTimer(1.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);		
+		}
 }
 #if defined DEBUG
 public  Action cmdPrintTeamHumanPlayerCount (int client, int args){
@@ -416,10 +297,7 @@ void PrintTeamHumanPlayerCount (){
 	LogError("[%s]Allies team =%d Axis team=%d min_to_score=%d",g_PLUGIN_NAME,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);	
 	}
 #endif 
-public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){
-EmitSoundToAll(sndGong);						
-//LogError("Event [%s]",name);
-}
+public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){EmitSoundToAll(sndGong);						}
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){g_RoundStatus=1;}
 public void Event_RoundActive(Event event, const char[] name, bool dontBroadcast){
 g_RoundStatus=2;
@@ -437,72 +315,6 @@ public void Event_RoundWin(Event event, const char[] name, bool dontBroadcast){g
 
 #endinput
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
