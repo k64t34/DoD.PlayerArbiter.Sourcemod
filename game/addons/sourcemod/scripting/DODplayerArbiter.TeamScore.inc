@@ -4,13 +4,16 @@ int TeamScore[DOD_TEAMS_COUNT][4];
 #define TEAM_KILLS		2
 #define TEAM_DEATHS		3
 
-int PlayerScore[MAXPLAYERS][3];
+int PlayerScore[MAXPLAYERS+1][3];
 #define PLAYER_POINTS		0
 #define PLAYER_KILLS		1
 #define PLAYER_DEATHS		2
 //**************************************************
 void ReStoreTeamsScore(){
 //**************************************************	
+#if defined DEBUG
+DebugLog("ReStoreTeamsScore");			
+#endif	
 SetTeamScore(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_SCORE]);
 SetTeamScore(DOD_TEAM_AXIS,		TeamScore[DOD_TEAM_AXIS]	[TEAM_SCORE]);
 SetTeamRoundsWon(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_WINS]);
@@ -20,7 +23,7 @@ SetTeamScore(DOD_TEAM_AXIS, GetRandomInt(10,100));
 SetTeamRoundsWon(DOD_TEAM_ALLIES,GetRandomInt(10,100));
 SetTeamRoundsWon(DOD_TEAM_AXIS, GetRandomInt(10,100));	
 */
-for (int client = 1; client <=MaxClients; client++)
+for (int client = 1; client !=MAXPLAYERS; client++)
 	{
 		if (IsValidClient(client)) 
 		{
@@ -33,11 +36,14 @@ for (int client = 1; client <=MaxClients; client++)
 //**************************************************
 void StoreTeamsScore(){
 //**************************************************	
+#if defined DEBUG
+DebugLog("StoreTeamsScore");			
+#endif	
 TeamScore[DOD_TEAM_ALLIES][TEAM_SCORE]=GetTeamScore(DOD_TEAM_ALLIES);	
 TeamScore[DOD_TEAM_AXIS][TEAM_SCORE]=GetTeamScore(DOD_TEAM_AXIS);	
 TeamScore[DOD_TEAM_ALLIES][TEAM_WINS]=GetTeamRoundsWon(DOD_TEAM_ALLIES);	
 TeamScore[DOD_TEAM_AXIS][TEAM_WINS]=GetTeamRoundsWon(DOD_TEAM_AXIS);	
-for (int client = 1; client <=MAXPLAYERS ; client++)
+for (int client = 1; client !=MAXPLAYERS ; client++)
 	{
 		if (IsValidClient(client)) 
 		{
@@ -56,11 +62,14 @@ for (int client = 1; client <=MAXPLAYERS ; client++)
 //**************************************************
 void ReSetTeamsScore(){
 //**************************************************	
+#if defined DEBUG
+DebugLog("ReSetTeamsScore");			
+#endif	
 SetTeamScore(DOD_TEAM_ALLIES, 0);
 SetTeamScore(DOD_TEAM_AXIS, 0);
 SetTeamRoundsWon(DOD_TEAM_ALLIES,0);
 SetTeamRoundsWon(DOD_TEAM_AXIS, 0);	
-for (int client = 1; client <=MAXPLAYERS ; client++)
+for (int client = 1; client !=MAXPLAYERS ; client++)
 	{
 		PlayerScore[client][PLAYER_POINTS]=0;
 		PlayerScore[client][PLAYER_KILLS]=0;

@@ -7,15 +7,18 @@
 //*   1.0 2021 The plugin restart score when count of players rise to 6
 //*   1.1 2023 The plugin refresh  bots every minute, simply removing all useless ones (no frags, no flag capture/blocking, no bomb plant/defusing).
 //*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
-#define nDEBUG 1
+// Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
+
+#define DEBUG 
 #define PLUGIN_VERSION "1.2"
 #define PLUGIN_NAME "DoD player arbiter"
+#define PLUGIN_AUTHOR "Kom64t"
 #define GAME_DOD
 #define USE_PLAYER
-#include "c:\Users\skorik\source\repos\smK64t\scripting\include\k64t"
-#define IGNORE_BOTS 1 //for debug define IGNORE_BOTS
-#define noNO_COMMANDS 1
-#define REFRESH_BOT  1 //ver 1.1
+#include "k64t"
+#define noIGNORE_BOTS  //for debug define IGNORE_BOTS
+#define noNO_COMMANDS 
+#define noREFRESH_BOT   //ver 1.1
 
 #define SND_GONG "k64t\\whistle.mp3" 
 #define MSG_RESTART			"Restart"
@@ -24,7 +27,7 @@
 #define MSG_Resume_scoring	"Resume scoring" //ver 1.2
 // Global Var
 char g_PLUGIN_NAME[]=PLUGIN_NAME;
-int PlayerTeam[MAX_PLAYERS+1];				// Команда игрока
+int PlayerTeam[MAX_PLAYERS];				// Команда игрока int[] PlayerTeam = new int[MaxClients]			// Команда игрока
 int TeamHumanPlayerCount[DOD_TEAMS_COUNT];	// Number of human players in a team
 char sndGong[]=SND_GONG;					// The sound of the beginning of scoring
 bool g_Scoring=false;						// Scoring points 
@@ -37,7 +40,7 @@ int minPlayer_to_start_score=0;
 public Plugin myinfo =
 {
     name = PLUGIN_NAME,
-    author = "Kom64t",
+    author = PLUGIN_AUTHOR,
     description = "Reset score",
     version = PLUGIN_VERSION,
     url = "https://github.com/k64t34/DoD.PlayerArbiter.Sourcemod.git"
@@ -47,16 +50,16 @@ public Plugin myinfo =
 #if defined REFRESH_BOT
 #include "DODplayerArbiter.Refreshbots.inc"
 #endif
-#if defined DEBUG
-char  g_LOG[] = "DODplayerArbiter.log";
+//#if defined DEBUG
+//char  g_LOG[] = "DODplayerArbiter.log";
 //TODO:GetPluginFilename(,g_LOG,sizeof(g_LOG)); and pass to k_debug 
-#endif 
+//#endif 
 //***********************************************
 public void OnPluginStart(){
 //***********************************************
 #if defined DEBUG
-DebugPrint("OnPluginStart");
-LogToFile(g_LOG,"[%s]StartScoring",g_PLUGIN_NAME);
+strcopy(g_LOG,MAX_FILENAME_LENGHT,"DODplayerArbiter.log");//TODO:GetPluginFilename(,g_LOG,sizeof(g_LOG)); and pass to k_debug 
+DebugLog("OnPluginStart");
 RegConsoleCmd("showHcount", cmdPrintTeamHumanPlayerCount);
 #endif 
 LoadTranslations("DODplayerArbiter.phrases");
@@ -86,6 +89,9 @@ HookEvent("dod_bomb_defused",Event_bomb, EventHookMode_Post);
 #endif 	
 }
 public void OnPluginEnd(){
+#if defined DEBUG
+	DebugLog("OnPluginEnd");
+#endif	
 UnhookEvent("player_team",			Event_PlayerTeam,	EventHookMode_Post);
 UnhookEvent("player_changeclass",		Event_PlayerClass,	EventHookMode_Post);
 	UnhookEvent("dod_round_start",		Event_RoundStart,	EventHookMode_Post);	
@@ -103,10 +109,13 @@ UnhookEvent("dod_bomb_defused",Event_bomb, EventHookMode_Post);
 //**************************************************
 public void OnMapStart(){
 //**************************************************	
+	#if defined DEBUG
+	DebugLog("OnMapStart");
+	#endif
 	TeamHumanPlayerCount[DOD_TEAM_ALLIES]=0;
 	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;
 	ReSetTeamsScore();
-	for (int client = 1; client <=MaxClients ; client++)PlayerTeam[client]=0;
+	for (int client = 1; client !=MAX_PLAYERS ; client++)PlayerTeam[client]=0;
 	//TODO:Test Logic
 	#if defined DEBUG
 	CalculateTeamHumanPlayerCount();		
@@ -143,7 +152,7 @@ stock void CalculateTeamHumanPlayerCount(){
 		}			
 	}
 	#if defined DEBUG
-	PrintTeamHumanPlayerCount();
+	PrintTeamHumanPlayerCount("CalculateTeamHumanPlayerCount");
 	#endif	
 }
 //**************************************************
@@ -153,7 +162,7 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 	#if defined DEBUG
 	char eventName [32];event.GetName(eventName,31);
 	char clientName[32];GetClientName(client, clientName, 31);
-	PrintToServer("[%s]:[%s] #%d %s",g_PLUGIN_NAME,eventName,client,clientName);
+	//DebugLog("[%s] #%d %s",eventName,client,clientName);
 	#endif
 	#if defined REFRESH_BOT
 	BotKills[client]=0;
@@ -164,24 +173,27 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 	#endif		
 	{		
 		#if defined DEBUG
-		PrintToServer("[%s]:[%s]GetClientTeam[%s]=%d",g_PLUGIN_NAME,eventName,clientName,GetClientTeam(client));
-		PrintToServer("[%s]:[%s]PlayerTeam[%s]=%d",g_PLUGIN_NAME,eventName,clientName,PlayerTeam[client]);		
+		//DebugLog("[%s]GetClientTeam[%s]=%d",eventName,clientName,GetClientTeam(client));
+		//DebugLog("[%s]PlayerTeam[%s]=%d",eventName,clientName,PlayerTeam[client]);		
 		#endif	
 		if (PlayerTeam[client]==0) // Player only change class (team remain at the same)
 		{
 			int Team=GetClientTeam(client);
 			PlayerTeam[client]=Team;
 			#if defined DEBUG
-			PrintToServer("[%s]:[%s]GetClientTeam(%s)=%d",g_PLUGIN_NAME,eventName,clientName,Team);			
-			PrintToServer("[%s]:[%s]PlayerTeam[%s]=%d",g_PLUGIN_NAME,eventName,clientName,PlayerTeam[client]);			
+			//DebugLog("[%s]GetClientTeam(%s)=%d",eventName,clientName,Team);			
+			//DebugLog("[%s]PlayerTeam[%s]=%d",eventName,clientName,PlayerTeam[client]);			
 			#endif	
 			TeamHumanPlayerCount[Team]++;
-			#if defined DEBUG
-			PrintTeamHumanPlayerCount();				
+			#if defined DEBUG			
+			PrintTeamHumanPlayerCount(eventName);				
 			#endif	
 			if (!g_Scoring){		
 				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score)				
 				{
+					#if defined DEBUG
+					DebugLog("[%s]Start scoring",eventName);
+					#endif	
 					g_Scoring=true;
 					CreateTimer(3.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
 				}
@@ -193,20 +205,20 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 Action  StartScoring(Handle timer){
 //**************************************************
 #if defined DEBUG
-LogToFile(g_PLUGIN_NAME,"[%s]StartScoring",g_PLUGIN_NAME);
+DebugLog("StartScoring");
 #endif	
 if (g_Scoring) 
 {
 	if (g_RoundStatus==2 ) //Если состояние раунда между стартом и победой, то _restart
 		{
 		#if defined DEBUG
-		PrintToServer("[%s]StartScoring RESTART_ROUND",g_PLUGIN_NAME);
+		DebugLog("StartScoring RESTART_ROUND");
 		#endif	
 		#if !defined NO_COMMANDS				
 		ServerCommand("mp_clan_restartround 10");//Restart round
 		g_Restarting=true;
 		#else
-		PrintToServer("----------------\nmp_clan_restartround 10\n-----------------");					
+		DebugLog("----------------\nmp_clan_restartround 10\n-----------------");					
 		#endif
 		}
 	if (g_1stRestart)
@@ -224,7 +236,7 @@ if (g_Scoring)
 		}		
 	//EmitSoundToAll(sndGong);					
 	#if defined DEBUG
-	PrintTeamHumanPlayerCount();
+	PrintTeamHumanPlayerCount("StartScoring");
 	#endif
 }
 return Plugin_Continue;
@@ -236,8 +248,7 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 	#if defined DEBUG
 	char eventName [32];event.GetName(eventName,31);
 	char clientName[32];GetClientName(client, clientName, 31);
-	PrintToServer("[%s]:[%s] #%d %s team %d->%d",g_PLUGIN_NAME,eventName,client,clientName,event.GetInt("oldteam"),event.GetInt("team"));
-	LogError("[%s]:[%s] #%d %s team %d->%d",g_PLUGIN_NAME,eventName,client,clientName,event.GetInt("oldteam"),event.GetInt("team"));
+	DebugLog("[%s] #%d %s team %d->%d",eventName,client,clientName,event.GetInt("oldteam"),event.GetInt("team"));	
 	#endif
 	#if defined IGNORE_BOTS
 	if (!IsFakeClient(client))
@@ -250,19 +261,18 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 			TeamHumanPlayerCount[oldTeam]--;
 			PlayerTeam[client]=0; // While no class has been selected player team set to 0. Its need to determinide than player change (not 1st set) class 
 			#if defined DEBUG
-			PrintTeamHumanPlayerCount();			
+			PrintTeamHumanPlayerCount("Event_PlayerTeam");			
 			#endif
 			if (g_Scoring)
 			{		
 				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1)
 				{			
+					#if defined DEBUG
+					DebugLog("[%s]Stop scoring",eventName);								
+					#endif	
 					g_Scoring=false;
 					if (!g_Restarting)
-					{
-						
-						#if defined DEBUG
-						LogError("[%s] Store score",g_PLUGIN_NAME);	
-						#endif					
+					{							
 						StoreTeamsScore();
 						PrintHintTextToAll("%t",MSG_Stop_scoring);
 					}
@@ -289,12 +299,11 @@ public void OnCvar_minPlayer_to_start_score(ConVar convar, char[] oldValue, char
 }
 #if defined DEBUG
 public  Action cmdPrintTeamHumanPlayerCount (int client, int args){
-	PrintTeamHumanPlayerCount();	
+	PrintTeamHumanPlayerCount("cmdPrintTeamHumanPlayerCount");	
 	return Plugin_Handled;
 }
-void PrintTeamHumanPlayerCount (){
-	PrintToServer("[%s]Allies team =%d Axis team=%d min_to_score=%d",g_PLUGIN_NAME,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);	
-	LogError("[%s]Allies team =%d Axis team=%d min_to_score=%d",g_PLUGIN_NAME,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);	
+void PrintTeamHumanPlayerCount (char[] FromProc){
+	DebugLog("[%s] Allies team =%d Axis team=%d min_to_score=%d",FromProc,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);		
 	}
 #endif 
 public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){EmitSoundToAll(sndGong);						}
