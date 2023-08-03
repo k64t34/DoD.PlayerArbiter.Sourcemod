@@ -10,9 +10,14 @@
     "en"    "Start scoring"
     "ru"    "Начался подсчет очков"
   }
-    "Stop scoring"
+  "Stop scoring"
   {
     "en"    "Stop scoring"
     "ru"    "Подсчет очков остановлен"
+  }
+  "Resume scoring"
+  {
+    "en"    "Resume scoring"
+    "ru"    "Подсчет очков возобновлён"
   }
 }
