@@ -7,8 +7,7 @@
 //*   1.0 2021 The plugin restart score when count of players rise to 6
 //*   1.1 2023 The plugin refresh  bots every minute, simply removing all useless ones (no frags, no flag capture/blocking, no bomb plant/defusing).
 //*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
-// Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
-
+//*Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
 #define noDEBUG 
 #define PLUGIN_VERSION "1.2"
 #define PLUGIN_NAME "DoD player arbiter"
@@ -334,18 +333,16 @@ void PrintTeamHumanPlayerCount (char[] FromProc){
 public void PrintTime(){int HMS[3];
 if (g_minutePrinted!=HMS[1]){g_minutePrinted=HMS[1];GetTimeHMS(HMS);PrintToChatAll("\x05%02d:%02d",HMS[0],HMS[1]);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1]);}}
 public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){EmitSoundToAll(sndGong);						}
-public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){
-	g_RoundStatus=1;PrintTime();
-	if (g_Scoring)
-	{
-		g_cntRound++;
-		PrintCenterTextAll("Raund # %d",g_cntRound);
-		int HMS[3];GetTimeHMS(HMS);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1],HMS[2]);		
-	}
-
-	}
+public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){g_RoundStatus=1;}
 public void Event_RoundActive(Event event, const char[] name, bool dontBroadcast){
 g_RoundStatus=2;
+PrintTime();
+if (g_Scoring)
+{
+	g_cntRound++;
+	PrintCenterTextAll("Round # %d",g_cntRound);
+	int HMS[3];GetTimeHMS(HMS);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1],HMS[2]);
+}
 if (g_Restarting)
 	{		
 		if (g_Scoring)
