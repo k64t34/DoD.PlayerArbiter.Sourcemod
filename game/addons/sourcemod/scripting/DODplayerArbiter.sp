@@ -9,16 +9,16 @@
 //*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
 // Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
 
-#define DEBUG 
+#define noDEBUG 
 #define PLUGIN_VERSION "1.2"
 #define PLUGIN_NAME "DoD player arbiter"
 #define PLUGIN_AUTHOR "Kom64t"
 #define GAME_DOD
 #define USE_PLAYER
 #include "k64t"
-#define noIGNORE_BOTS  //for debug define IGNORE_BOTS
+#define IGNORE_BOTS  //for debug define IGNORE_BOTS
 #define noNO_COMMANDS 
-#define noREFRESH_BOT   //ver 1.1
+#define REFRESH_BOT   //ver 1.1
 
 #define SND_GONG "k64t\\whistle.mp3" 
 #define MSG_RESTART			"Restart"
@@ -26,7 +26,9 @@
 #define MSG_Stop_scoring	"Stop scoring"
 #define MSG_Resume_scoring	"Resume scoring" //ver 1.2
 // Global Var
-char g_PLUGIN_NAME[]=PLUGIN_NAME;
+int g_cntRound=0;							// Scoring round counter ver 1.3
+int g_minutePrinted=-1;							// Last printed minute
+char g_PLUGIN_NAME[]=PLUGIN_NAME;           // Plugin name
 int PlayerTeam[MAX_PLAYERS];				// Команда игрока int[] PlayerTeam = new int[MaxClients]			// Команда игрока
 int TeamHumanPlayerCount[DOD_TEAMS_COUNT];	// Number of human players in a team
 char sndGong[]=SND_GONG;					// The sound of the beginning of scoring
@@ -50,17 +52,18 @@ public Plugin myinfo =
 #if defined REFRESH_BOT
 #include "DODplayerArbiter.Refreshbots.inc"
 #endif
-//#if defined DEBUG
+#if defined DEBUG
+bool __test=false;
 //char  g_LOG[] = "DODplayerArbiter.log";
 //TODO:GetPluginFilename(,g_LOG,sizeof(g_LOG)); and pass to k_debug 
-//#endif 
+#endif 
 //***********************************************
 public void OnPluginStart(){
 //***********************************************
 #if defined DEBUG
 strcopy(g_LOG,MAX_FILENAME_LENGHT,"DODplayerArbiter.log");//TODO:GetPluginFilename(,g_LOG,sizeof(g_LOG)); and pass to k_debug 
 DebugLog("OnPluginStart");
-RegConsoleCmd("showHcount", cmdPrintTeamHumanPlayerCount);
+RegConsoleCmd("_test", cmdPrintTeamHumanPlayerCount);
 #endif 
 LoadTranslations("DODplayerArbiter.phrases");
 char buffer[MAX_FILENAME_LENGHT];
@@ -300,14 +303,47 @@ public void OnCvar_minPlayer_to_start_score(ConVar convar, char[] oldValue, char
 #if defined DEBUG
 public  Action cmdPrintTeamHumanPlayerCount (int client, int args){
 	PrintTeamHumanPlayerCount("cmdPrintTeamHumanPlayerCount");	
+	int HMS[3];
+	GetTimeHMS(HMS);
+	for (int i=1;i!=MAX_PLAYERS;i++)
+	{
+		if (__test)
+			{
+			PrintCenterText(i, "%02d:%02d:%02d",HMS[0],HMS[1],HMS[2]);
+			PrintHintText(i, "\x04Raund # 23");
+			PrintToChat(i, "\x05Raund # 23 \x0412:34");
+			}
+		else{
+			PrintCenterText(i, "Raund # 23");
+			PrintHintText(i, "%02d:%02d:%02d",HMS[0],HMS[1],HMS[2]);
+			PrintToChat(i, "\x04Raund # 23 \x0512:34");
+			}
+	}
+	
+	//PrintCenterTextAll(const char[] format, any... ...)
+	//PrintHintTextToAll(const char[] format, any... ...)
+	//PrintToChatAll(const char[] format, any... ...)	
+	//__test=!__test;
+	
 	return Plugin_Handled;
 }
 void PrintTeamHumanPlayerCount (char[] FromProc){
 	DebugLog("[%s] Allies team =%d Axis team=%d min_to_score=%d",FromProc,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);		
 	}
 #endif 
+public void PrintTime(){int HMS[3];
+if (g_minutePrinted!=HMS[1]){g_minutePrinted=HMS[1];GetTimeHMS(HMS);PrintToChatAll("\x05%02d:%02d",HMS[0],HMS[1]);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1]);}}
 public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){EmitSoundToAll(sndGong);						}
-public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){g_RoundStatus=1;}
+public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){
+	g_RoundStatus=1;PrintTime();
+	if (g_Scoring)
+	{
+		g_cntRound++;
+		PrintCenterTextAll("Raund # %d",g_cntRound);
+		int HMS[3];GetTimeHMS(HMS);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1],HMS[2]);		
+	}
+
+	}
 public void Event_RoundActive(Event event, const char[] name, bool dontBroadcast){
 g_RoundStatus=2;
 if (g_Restarting)

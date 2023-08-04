@@ -11,6 +11,7 @@ int PlayerScore[MAXPLAYERS+1][3];
 //**************************************************
 void ReStoreTeamsScore(){
 //**************************************************	
+PrintTime();
 #if defined DEBUG
 DebugLog("ReStoreTeamsScore");			
 #endif	
@@ -36,6 +37,7 @@ for (int client = 1; client !=MAXPLAYERS; client++)
 //**************************************************
 void StoreTeamsScore(){
 //**************************************************	
+PrintTime();
 #if defined DEBUG
 DebugLog("StoreTeamsScore");			
 #endif	
@@ -62,6 +64,7 @@ for (int client = 1; client !=MAXPLAYERS ; client++)
 //**************************************************
 void ReSetTeamsScore(){
 //**************************************************	
+PrintTime();
 #if defined DEBUG
 DebugLog("ReSetTeamsScore");			
 #endif	
@@ -76,10 +79,12 @@ for (int client = 1; client !=MAXPLAYERS ; client++)
 		PlayerScore[client][PLAYER_DEATHS]=0;
 	}	
 }
+
 //**************************************************
 public void OnClientConnected(int client){
 //**************************************************
 PlayerScore[client][PLAYER_POINTS]=0;			
 PlayerScore[client][PLAYER_KILLS]=0;			
 PlayerScore[client][PLAYER_DEATHS]=0;	
+PrintTime();
 }
