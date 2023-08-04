@@ -20,13 +20,13 @@
 #define REFRESH_BOT   //ver 1.1
 
 #define SND_GONG "k64t\\whistle.mp3" 
-#define MSG_RESTART			"Restart"
 #define MSG_Start_scoring	"Start scoring"
 #define MSG_Stop_scoring	"Stop scoring"
 #define MSG_Resume_scoring	"Resume scoring" //ver 1.2
 // Global Var
 int g_cntRound=0;							// Scoring round counter ver 1.3
 int g_minutePrinted=-1;							// Last printed minute
+bool g_awaitStopScoring=false;				// true - waiting, false - no waiting
 char g_PLUGIN_NAME[]=PLUGIN_NAME;           // Plugin name
 int PlayerTeam[MAX_PLAYERS];				// Команда игрока int[] PlayerTeam = new int[MaxClients]			// Команда игрока
 int TeamHumanPlayerCount[DOD_TEAMS_COUNT];	// Number of human players in a team
@@ -114,6 +114,7 @@ public void OnMapStart(){
 	#if defined DEBUG
 	DebugLog("OnMapStart");
 	#endif
+	g_cntRound=0;	
 	TeamHumanPlayerCount[DOD_TEAM_ALLIES]=0;
 	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;
 	ReSetTeamsScore();
@@ -197,51 +198,66 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 					DebugLog("[%s]Start scoring",eventName);
 					#endif	
 					g_Scoring=true;
-					CreateTimer(3.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
+					//CreateTimer(10.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
+					StartScoring();
 				}
 			}
 		}
 	}	
 }	
 //**************************************************
-Action  StartScoring(Handle timer){
+//Action  StartScoring(Handle timer){
+void StartScoring(){
 //**************************************************
 #if defined DEBUG
-DebugLog("StartScoring");
+DebugLog("[StartScoring] Begin");
 #endif	
 if (g_Scoring) 
 {
 	if (g_RoundStatus==2 ) //Если состояние раунда между стартом и победой, то _restart
 		{
+		g_Restarting=true;
 		#if defined DEBUG
-		DebugLog("StartScoring RESTART_ROUND");
+		DebugLog("[StartScoring] RestartRound");
 		#endif	
 		#if !defined NO_COMMANDS				
 		ServerCommand("mp_clan_restartround 10");//Restart round
-		g_Restarting=true;
+		
 		#else
 		DebugLog("----------------\nmp_clan_restartround 10\n-----------------");					
-		#endif
+		#endif		
 		}
 	if (g_1stRestart)
 		{			
-		if (!g_Restarting)	ReStoreTeamsScore();
-		PrintToConsoleAll("[%s]: %s",g_PLUGIN_NAME,MSG_Resume_scoring);				
+		PrintToChatAll("[%s]: \x05%s",g_PLUGIN_NAME,MSG_Resume_scoring);				
 		PrintHintTextToAll("%t",MSG_Resume_scoring);
+		if (!g_Restarting)	
+			{			
+			#if defined DEBUG
+			DebugLog("[StartScoring] Restore");
+			#endif	
+			ReStoreTeamsScore();
+			}		
 		}
 	else
-		{
-		g_1stRestart=true;	
-		if (!g_Restarting) ReSetTeamsScore();			
+		{				
 		PrintHintTextToAll("%t",MSG_Start_scoring);
-		PrintToConsoleAll("[%s]: %s",g_PLUGIN_NAME,MSG_Start_scoring);			
+		PrintToChatAll("[%s]: \x05%s",g_PLUGIN_NAME,MSG_Start_scoring);			
+		if (!g_Restarting) 		
+			{			
+			#if defined DEBUG
+			DebugLog("[StartScoring] Reset");
+			#endif					
+			ReSetTeamsScore();		
+			}		
+		
 		}		
 	//EmitSoundToAll(sndGong);					
-	#if defined DEBUG
-	PrintTeamHumanPlayerCount("StartScoring");
-	#endif
+	#if defined DEBUG	
+	DebugLog("[StartScoring] End");
+	#endif	
 }
-return Plugin_Continue;
+//return Plugin_Continue;
 }
 //**************************************************
 public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){
@@ -267,27 +283,51 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 			#endif
 			if (g_Scoring)
 			{		
-				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1)
-				{			
-					#if defined DEBUG
-					DebugLog("[%s]Stop scoring",eventName);								
-					#endif	
-					g_Scoring=false;
-					if (!g_Restarting)
-					{							
-						StoreTeamsScore();
-						PrintHintTextToAll("%t",MSG_Stop_scoring);
-					}
+				if (!g_awaitStopScoring)
+				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1 || TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0)
+				{	
+					g_awaitStopScoring=true;
+					CreateTimer(10.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);													
 				}
-				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
+				/*if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
 				{
 					g_1stRestart=false;
 					ReSetTeamsScore();
-				}
+				}*/
 			}
 		}	
 	}	
 }
+//**************************************************
+Action  StopScoring(Handle timer){
+//**************************************************
+if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]<minPlayer_to_start_score)
+	{
+	#if defined DEBUG
+	DebugLog("Stopscoring");								
+	#endif		
+	g_Scoring=false;
+	if (!g_Restarting)
+		{							
+		StoreTeamsScore();
+		PrintHintTextToAll("%t",MSG_Stop_scoring);
+		PrintToChatAll("[%s]: \x05%s",g_PLUGIN_NAME,MSG_Stop_scoring);		
+		}
+	}	
+#if defined DEBUG
+else 
+	{
+	DebugLog("No Stopscoring");								
+	}
+#endif	
+if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
+	{
+	g_1stRestart=false;
+	ReSetTeamsScore();
+	}
+g_awaitStopScoring=false;	
+return Plugin_Continue;
+}	
 //**************************************************
 public void OnCvar_minPlayer_to_start_score(ConVar convar, char[] oldValue, char[] newValue){
 //**************************************************	
@@ -296,7 +336,8 @@ public void OnCvar_minPlayer_to_start_score(ConVar convar, char[] oldValue, char
 		if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]>=minPlayer_to_start_score)
 		{
 			g_Scoring=true;
-			CreateTimer(1.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);		
+			//CreateTimer(1.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);		
+			StartScoring();
 		}
 }
 #if defined DEBUG
@@ -331,114 +372,35 @@ void PrintTeamHumanPlayerCount (char[] FromProc){
 	}
 #endif 
 public void PrintTime(){int HMS[3];
-if (g_minutePrinted!=HMS[1]){g_minutePrinted=HMS[1];GetTimeHMS(HMS);PrintToChatAll("\x05%02d:%02d",HMS[0],HMS[1]);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1]);}}
+if (g_minutePrinted!=HMS[1]){g_minutePrinted=HMS[1];GetTimeHMS(HMS);PrintToChatAll("%02d:%02d",HMS[0],HMS[1]);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1]);}}
 public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){EmitSoundToAll(sndGong);						}
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){g_RoundStatus=1;}
 public void Event_RoundActive(Event event, const char[] name, bool dontBroadcast){
+#if defined DEBUG
+	DebugLog("Event_RoundActive");
+#endif 
 g_RoundStatus=2;
 PrintTime();
 if (g_Scoring)
-{
+	{
 	g_cntRound++;
 	PrintCenterTextAll("Round # %d",g_cntRound);
 	int HMS[3];GetTimeHMS(HMS);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1],HMS[2]);
-}
-if (g_Restarting)
-	{		
-		if (g_Scoring)
+	if (g_Restarting)
 		{
-			if (g_1stRestart){ReStoreTeamsScore();}	
-			else{ReSetTeamsScore();}	
+		g_Restarting=false;		
+		if (g_1stRestart)
+			{
+			ReStoreTeamsScore();
+			}	
+		else
+			{
+			g_1stRestart=true;
+			}
 		}
-		g_Restarting=false;
 	}
 }
 public void Event_RoundWin(Event event, const char[] name, bool dontBroadcast){g_RoundStatus=0;}
 
 #endinput
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
-
-
-
-
-
-	
-//*****************************************************************************
-public EventRoundStart(Handle:event, const String:name[], bool:dontBroadcast){
-//*****************************************************************************
-T_RoundStart=GetGameTime();
-for (new client = 1; client <=MaxClients ; client++)	
-	{
-	if (IsValidClient(client)) GetClientAbsOrigin(client,P[client-1]);		
-	T_DEATH[client-1]=-1.0;
-	#if defined DEBUG 
-	new String:ClientName[25];
-	if (IsClientConnected(client))
-		{
-		GetClientName(client,ClientName, sizeof(ClientName)); 
-		PrintToChatAll("%d %s %f %f %f",client,ClientName,P[client-1][0],P[client-1][1],P[client-1][2]);
-		}	
-	#endif	
-	
-	}
-}
-//*****************************************************************************
-public EventRoundEnd(Handle:event, const String:name[], bool:dontBroadcast){
-//*****************************************************************************
-#if defined DEBUG 
-PrintToChatAll("RoundEnd");	
-#endif	
-
-new Float:L[3];
-new clientTeam;
-for (new client = 1; client <=MaxClients ; client++)
-	{ 
-	if (!IsValidAliveOrDeadClient(client)  || IsFakeClient(client) || T_DEATH[client-1]==-1.0 )
-		{
-		#if defined DEBUG
-		PrintToChatAll("%d - T-death %f ignored",client,T_DEATH[client-1]);
-		#endif 
-		continue;
-		}
-		clientTeam=GetClientTeam(client);
-	if (clientTeam==CS_TEAM_CT || clientTeam==CS_TEAM_T) 
-		{
-		GetClientAbsOrigin(client,L);
-		#if defined DEBUG 
-		new String:ClientName[25];
-		GetClientName(client,ClientName, sizeof(ClientName)); 
-		PrintToChatAll("%d %s %f %f %f",client,ClientName,P[client-1][0],P[client-1][1],P[client-1][2]);	
-		PrintToChatAll("%d %s %f %f %f",client,ClientName,L[0],L[1],L[2]);	
-			PrintToChatAll("%d %s dZ=%f",client,ClientName,FloatAbs(P[client-1][2]-L[2]));	
-		#endif
-		if (P[client-1][0]==L[0] && 
-			P[client-1][1]==L[1] && 
-			FloatAbs(P[client-1][2]-L[2])<100.0 
-			&& T_DEATH[client-1]-T_RoundStart>5.0
-		)
-			{
-			#if defined DEBUG 
-			PrintToChatAll("%d %s Stand",client,ClientName);	
-			#endif
-			MoveToSpec(client);
-			}
-		}	
-	}
-}
-//*****************************************************************************
-MoveToSpec(client){
-//*****************************************************************************
-#if defined DEBUG 
-	PrintToChatAll("Change Client %d Team to Specators %d",client,CS_TEAM_SPECTATOR);	
-#endif	
-PrintCenterText(client,"You reform  to spectator  due to  were frozen for the entire round"); 
-PrintToChat(client,    "You reform  to spectator  due to  were frozen for the entire round"); 
-//ShowMOTDPanel( client, "Статистика", "http://csw.oduyu.so/stats.css", MOTDPANEL_TYPE_URL);
-ChangeClientTeam(client, CS_TEAM_SPECTATOR); 
-
-}
-
-
-  
-  

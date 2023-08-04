@@ -19,6 +19,10 @@ SetTeamScore(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_SCORE]);
 SetTeamScore(DOD_TEAM_AXIS,		TeamScore[DOD_TEAM_AXIS]	[TEAM_SCORE]);
 SetTeamRoundsWon(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_WINS]);
 SetTeamRoundsWon(DOD_TEAM_AXIS,		TeamScore[DOD_TEAM_AXIS]	[TEAM_WINS]);
+SetTeamFrag(DOD_TEAM_ALLIES,TeamScore[DOD_TEAM_ALLIES]	[TEAM_KILLS]);
+SetTeamFrag(DOD_TEAM_AXIS,	TeamScore[DOD_TEAM_AXIS]	[TEAM_KILLS]);
+SetTeamDeaths(DOD_TEAM_AXIS,	TeamScore[DOD_TEAM_AXIS]	[TEAM_DEATHS]);
+SetTeamDeaths(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_DEATHS]);
 /*SetTeamScore(DOD_TEAM_ALLIES, GetRandomInt(10,100));
 SetTeamScore(DOD_TEAM_AXIS, GetRandomInt(10,100));
 SetTeamRoundsWon(DOD_TEAM_ALLIES,GetRandomInt(10,100));
@@ -44,7 +48,11 @@ DebugLog("StoreTeamsScore");
 TeamScore[DOD_TEAM_ALLIES][TEAM_SCORE]=GetTeamScore(DOD_TEAM_ALLIES);	
 TeamScore[DOD_TEAM_AXIS][TEAM_SCORE]=GetTeamScore(DOD_TEAM_AXIS);	
 TeamScore[DOD_TEAM_ALLIES][TEAM_WINS]=GetTeamRoundsWon(DOD_TEAM_ALLIES);	
-TeamScore[DOD_TEAM_AXIS][TEAM_WINS]=GetTeamRoundsWon(DOD_TEAM_AXIS);	
+TeamScore[DOD_TEAM_AXIS][TEAM_WINS]=GetTeamRoundsWon(DOD_TEAM_AXIS);
+TeamScore[DOD_TEAM_ALLIES]	[TEAM_KILLS] = GetTeamFrag(DOD_TEAM_ALLIES);
+TeamScore[DOD_TEAM_AXIS]	[TEAM_KILLS] = GetTeamFrag(DOD_TEAM_AXIS);
+TeamScore[DOD_TEAM_ALLIES]	[TEAM_DEATHS] = GetTeamDeaths(DOD_TEAM_ALLIES);
+TeamScore[DOD_TEAM_AXIS]	[TEAM_DEATHS] = GetTeamDeaths(DOD_TEAM_AXIS);
 for (int client = 1; client !=MAXPLAYERS ; client++)
 	{
 		if (IsValidClient(client)) 
@@ -72,11 +80,21 @@ SetTeamScore(DOD_TEAM_ALLIES, 0);
 SetTeamScore(DOD_TEAM_AXIS, 0);
 SetTeamRoundsWon(DOD_TEAM_ALLIES,0);
 SetTeamRoundsWon(DOD_TEAM_AXIS, 0);	
+SetTeamFrag(DOD_TEAM_ALLIES,0);
+SetTeamFrag(DOD_TEAM_AXIS,0);
+SetTeamDeaths(DOD_TEAM_AXIS,0);
+SetTeamDeaths(DOD_TEAM_ALLIES,	0);
 for (int client = 1; client !=MAXPLAYERS ; client++)
 	{
 		PlayerScore[client][PLAYER_POINTS]=0;
 		PlayerScore[client][PLAYER_KILLS]=0;
 		PlayerScore[client][PLAYER_DEATHS]=0;
+	if (IsValidClient(client)) 
+		{
+		SetDODClientFrag(client,0);
+		SetDODClientDeaths(client,0);
+		SetDODClientPoints(client,0);				
+		}	
 	}	
 }
 

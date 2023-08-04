@@ -1,10 +1,5 @@
 "Phrases"
 {
-  "Restart"
-  {
-    "en"    "Restart score"
-    "ru"    "Рестарт"
-  }
   "Start scoring"
   {
     "en"    "Start scoring"
