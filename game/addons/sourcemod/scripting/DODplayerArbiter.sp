@@ -1,3 +1,11 @@
+// Sourcemod forum 
+// result search  m_iDeaths, dod, dods, dod:s https://forums.alliedmods.net/search.php?searchid=43934563
+// restorescore //https://forums.alliedmods.net/showthread.php?t=188378&highlight=m_iDeaths+dod+dods+dod%3As
+//save score https://forums.alliedmods.net/showthread.php?t=74975&highlight=m_iDeaths+dod+dods+dod%3As
+// DoD:S getting/changing player objectives scores https://forums.alliedmods.net/showthread.php?t=92508&highlight=m_iDeaths+dod+dods+dod%3As
+ 
+
+
 //*
 //* DoD:S Players(bots)  arbiter for DODs
 //*
@@ -9,7 +17,7 @@
 //*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
 //*Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
 #define noDEBUG 
-#define PLUGIN_VERSION "1.2"
+#define PLUGIN_VERSION "1.4"
 #define PLUGIN_NAME "DoD player arbiter"
 #define PLUGIN_AUTHOR "Kom64t"
 #define GAME_DOD
@@ -162,10 +170,12 @@ stock void CalculateTeamHumanPlayerCount(){
 public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcast){
 //**************************************************	
 	int client=GetClientOfUserId(event.GetInt("userid"));
+	if (client==0) {LogError("Event_PlayerClass get client index 0");return;}
 	#if defined DEBUG
 	char eventName [32];event.GetName(eventName,31);
 	char clientName[32];GetClientName(client, clientName, 31);
-	//DebugLog("[%s] #%d %s",eventName,client,clientName);
+	//DebugLog("[%s] #%d %s",eventName,client,clientName);	
+	DebugLog("[%s] #%d %s class=%d",eventName,client,clientName,GetDODPlayerClass(client));
 	#endif
 	#if defined REFRESH_BOT
 	BotKills[client]=0;
@@ -271,32 +281,34 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 	#if defined IGNORE_BOTS
 	if (!IsFakeClient(client))
 	#endif	
-	{
+		{
 		int oldTeam=event.GetInt("oldteam");	
 		int newTeam=event.GetInt("team");	
 		if ((oldTeam==DOD_TEAM_ALLIES || oldTeam==DOD_TEAM_AXIS) && newTeam!=oldTeam )	
-		{
+			{
 			TeamHumanPlayerCount[oldTeam]--;
 			PlayerTeam[client]=0; // While no class has been selected player team set to 0. Its need to determinide than player change (not 1st set) class 
-			#if defined DEBUG
-			PrintTeamHumanPlayerCount("Event_PlayerTeam");			
-			#endif
+			
 			if (g_Scoring)
-			{		
+				{		
 				if (!g_awaitStopScoring)
 				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1 || TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0)
-				{	
+					{	
 					g_awaitStopScoring=true;
 					CreateTimer(10.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);													
-				}
+					}
 				/*if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
 				{
 					g_1stRestart=false;
 					ReSetTeamsScore();
 				}*/
-			}
+				}
+			}	
+		
 		}	
-	}	
+	#if defined DEBUG
+	PrintTeamHumanPlayerCount("Event_PlayerTeam");			
+	#endif
 }
 //**************************************************
 Action  StopScoring(Handle timer){
