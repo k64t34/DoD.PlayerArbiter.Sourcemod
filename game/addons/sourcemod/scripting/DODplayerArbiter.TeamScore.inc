@@ -14,6 +14,8 @@ void ReStoreTeamsScore(){
 PrintTime();
 #if defined DEBUG
 DebugLog("ReStoreTeamsScore");			
+//#elseif defined LOG
+//LogMessage("ReStoreTeamsScore");
 #endif	
 SetTeamScore(DOD_TEAM_ALLIES,	TeamScore[DOD_TEAM_ALLIES]	[TEAM_SCORE]);
 SetTeamScore(DOD_TEAM_AXIS,		TeamScore[DOD_TEAM_AXIS]	[TEAM_SCORE]);
@@ -43,8 +45,11 @@ void StoreTeamsScore(){
 //**************************************************	
 PrintTime();
 #if defined DEBUG
-DebugLog("StoreTeamsScore");			
+DebugLog("StoreTeamsScore");
+//#elseif defined LOG
+//LogMessage("StoreTeamsScore");			
 #endif	
+
 TeamScore[DOD_TEAM_ALLIES][TEAM_SCORE]=GetTeamScore(DOD_TEAM_ALLIES);	
 TeamScore[DOD_TEAM_AXIS][TEAM_SCORE]=GetTeamScore(DOD_TEAM_AXIS);	
 TeamScore[DOD_TEAM_ALLIES][TEAM_WINS]=GetTeamRoundsWon(DOD_TEAM_ALLIES);	
@@ -75,6 +80,8 @@ void ReSetTeamsScore(){
 PrintTime();
 #if defined DEBUG
 DebugLog("ReSetTeamsScore");			
+//#elseif defined LOG
+//LogMessage("ReSetTeamsScore");	
 #endif	
 SetTeamScore(DOD_TEAM_ALLIES, 0);
 SetTeamScore(DOD_TEAM_AXIS, 0);
