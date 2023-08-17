@@ -16,34 +16,38 @@
 //*   1.1 2023 The plugin refresh  bots every minute, simply removing all useless ones (no frags, no flag capture/blocking, no bomb plant/defusing).
 //*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
 //*Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
-#define nDEBUG 
+#define noDEBUG 
 #define LOG
-#define PLUGIN_VERSION "1.4"
+#define PLUGIN_VERSION "1.5"
 #define PLUGIN_NAME "DoD player arbiter"
 #define PLUGIN_AUTHOR "Kom64t"
 #define GAME_DOD
 #define USE_PLAYER
 #include "k64t"
-#define noIGNORE_BOTS  //for debug define IGNORE_BOTS
+#define IGNORE_BOTS  //for debug define IGNORE_BOTS
 #define noNO_COMMANDS 
 #define REFRESH_BOT   //ver 1.1
 
 #define SND_GONG "k64t\\whistle.mp3" 
 #define MSG_Start_scoring	"Start scoring"
+char str_MSG_Start_scoring[]=MSG_Start_scoring;
 #define MSG_Stop_scoring	"Stop scoring"
+char str_MSG_Stop_scoring[]=MSG_Stop_scoring;
 #define MSG_Resume_scoring	"Resume scoring" //ver 1.2
+char str_MSG_Resume_scoring[]=MSG_Resume_scoring;
+#define MSG_Round			"Round" //ver 1.5
 // Global Var
 int g_cntRound=0;							// Scoring round counter ver 1.3
 int g_minutePrinted=-1;						// Last printed minute
 bool g_awaitStopScoring=false;				// true - waiting, false - no waiting
-char g_PLUGIN_NAME[]=PLUGIN_NAME;           // Plugin name
+//char g_PLUGIN_NAME[]=PLUGIN_NAME;           // Plugin name
 int PlayerTeam[MAX_PLAYERS];				// Команда игрока int[] PlayerTeam = new int[MaxClients]			// Команда игрока
 int TeamHumanPlayerCount[DOD_TEAMS_COUNT];	// Number of human players in a team
 char sndGong[]=SND_GONG;					// The sound of the beginning of scoring
-bool g_Scoring=false;						// Scoring points 
+bool g_Scoring=false;						// Scoring in progress
 bool g_1stRestart=false;					// true - first round with scoring has already passed, false - no restart occur
 bool g_Restarting=false;					// Command _restart 10 was sent
-int g_RoundStatus=0;						// 0-Bonus,1-Start,2-Active
+int g_RoundStatus=0;						// Time period of round:0-Bonus,1-Start,2-Active
 //ConVar 
 ConVar sm_arbiter_minPlayer_to_start_score;
 int minPlayer_to_start_score=0;
@@ -51,7 +55,7 @@ public Plugin myinfo =
 {
     name = PLUGIN_NAME,
     author = PLUGIN_AUTHOR,
-    description = "Reset score",
+    description = "Restart score, kick week bots",
     version = PLUGIN_VERSION,
     url = "https://github.com/k64t34/DoD.PlayerArbiter.Sourcemod.git"
 };
@@ -154,10 +158,12 @@ public void OnMapEnd(){
 //**************************************************	
 #if defined DEBUG
 	DebugLog("[OnMapEnd]");
-	#endif
+#endif
 g_Scoring=false;
 g_1stRestart=false;
-LogMessage("Round # %d. Teams:allies %d, axis %d. Score: allies %d(%d), axis %d(%d). ",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],GetTeamRoundsWon(DOD_TEAM_ALLIES),GetTeamScore(DOD_TEAM_ALLIES),GetTeamRoundsWon(DOD_TEAM_AXIS),GetTeamScore(DOD_TEAM_AXIS));
+#if defined LOG
+LogMessage("[OnMapEnd] Round # %d. Teams:allies %d, axis %d. Score: allies %d(%d), axis %d(%d). ",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],GetTeamRoundsWon(DOD_TEAM_ALLIES),GetTeamScore(DOD_TEAM_ALLIES),GetTeamRoundsWon(DOD_TEAM_AXIS),GetTeamScore(DOD_TEAM_AXIS));
+#endif
 }
 //**************************************************
 stock void CalculateTeamHumanPlayerCount(){
@@ -268,11 +274,11 @@ if (g_Scoring)
 		}
 	if (g_1stRestart)
 		{			
-		PrintToChatAll("%t",MSG_Resume_scoring);				
-		PrintHintTextToAll("%t",MSG_Resume_scoring);
-		LogToGame(MSG_Resume_scoring);
+		PrintToChatAll("%t",str_MSG_Resume_scoring);				
+		PrintHintTextToAll("%t",str_MSG_Resume_scoring);
+		LogToGame(str_MSG_Resume_scoring);
 		#if defined LOG
-		LogMessage(MSG_Resume_scoring);
+		LogMessage(str_MSG_Resume_scoring);
 		#endif
 		if (!g_Restarting)	
 			{			
@@ -284,11 +290,11 @@ if (g_Scoring)
 		}
 	else
 		{				
-		PrintHintTextToAll("%t",MSG_Start_scoring);
-		PrintToChatAll("%t",MSG_Start_scoring);
-		LogToGame(MSG_Start_scoring);
+		PrintHintTextToAll("%t",str_MSG_Start_scoring);
+		PrintToChatAll("%t",str_MSG_Start_scoring);
+		LogToGame(str_MSG_Start_scoring);
 		#if defined LOG
-		LogMessage(MSG_Start_scoring);
+		LogMessage(str_MSG_Start_scoring);
 		#endif
 		if (!g_Restarting) 		
 			{			
@@ -332,7 +338,7 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1 || TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0)
 					{	
 					g_awaitStopScoring=true;
-					CreateTimer(10.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);													
+					CreateTimer(15.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);
 					}
 				/*if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
 				{
@@ -359,19 +365,17 @@ if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]<mi
 	if (!g_Restarting)
 		{							
 		StoreTeamsScore();
-		PrintHintTextToAll("%t",MSG_Stop_scoring);
-		PrintToChatAll("%t",MSG_Stop_scoring);
-		LogToGame(MSG_Stop_scoring);
+		PrintHintTextToAll("%t",str_MSG_Stop_scoring);
+		PrintToChatAll("%t",str_MSG_Stop_scoring);
+		LogToGame(str_MSG_Stop_scoring);
 		#if defined LOG
-		LogMessage(MSG_Stop_scoring);
+		LogMessage(str_MSG_Stop_scoring);
 		#endif
 		}
 	}	
 #if defined DEBUG
 else 
-	{
-	DebugLog("No Stopscoring");								
-	}
+	{	DebugLog("No Stopscoring");									}
 #endif	
 // //убрал для парсинга лога
 //if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
@@ -443,13 +447,15 @@ PrintTime();
 if (g_Scoring)
 	{
 	g_cntRound++;
-	PrintCenterTextAll("Round # %d",g_cntRound);
+	PrintCenterTextAll("%t # %d",MSG_Round,g_cntRound);
 	#if defined LOG
 	LogToGame ("Round # %d. Allies %d player(s) Axis %d player(s)",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS]);
 	LogMessage("Round # %d. Teams:allies %d, axis %d. Score: allies %d(%d), axis %d(%d). ",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],GetTeamRoundsWon(DOD_TEAM_ALLIES),GetTeamScore(DOD_TEAM_ALLIES),GetTeamRoundsWon(DOD_TEAM_AXIS),GetTeamScore(DOD_TEAM_AXIS));
 	if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]<minPlayer_to_start_score)
+		{
 		LogMessage("[Event_RoundActive] Invaled number  of players to start scoring. Round # %d. Teams:allies %d, axis %d. Needs %d",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
-		LogError("[Event_RoundActive] Invaled number  of players to start scoring. Round # %d. Teams:allies %d, axis %d. Needs %d",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
+		LogError  ("[Event_RoundActive] Invaled number  of players to start scoring. Round # %d. Teams:allies %d, axis %d. Needs %d",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
+		}
 	#endif 
 	int HMS[3];GetTimeHMS(HMS);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1]);
 	if (g_Restarting)

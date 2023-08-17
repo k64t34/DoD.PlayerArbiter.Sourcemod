@@ -2,17 +2,22 @@
 {
   "Start scoring"
   {
-    "en"    "Start scoring"
+    "en"    "Scoring has begun"
     "ru"    "Начался подсчет очков"
   }
   "Stop scoring"
   {
-    "en"    "Stop scoring"
+    "en"    "Scoring stopped"
     "ru"    "Подсчет очков остановлен"
   }
   "Resume scoring"
   {
-    "en"    "Resume scoring"
+    "en"    "Scoring resumed"
     "ru"    "Подсчет очков возобновлён"
+  }
+  "Round"
+  {
+    "en"    "Round"
+    "ru"    "Раунд"
   }
 }
