@@ -9,17 +9,23 @@ public Action Refreshbot(Handle timer, int client){
 	PrintToServer("Refresh bot");
 	PrintToServer("-----------");
 #endif
+int tDiff=	TeamHumanPlayerCount[DOD_TEAM_ALLIES] +	TeamBotPlayerCount[DOD_TEAM_ALLIES] - TeamHumanPlayerCount[DOD_TEAM_AXIS] - 	TeamBotPlayerCount[DOD_TEAM_AXIS];
+int TeamToClear=0;
+if (tDiff>1) TeamToClear=DOD_TEAM_ALLIES;
+else if (tDiff<-1)TeamToClear=DOD_TEAM_AXIS;
 for (int i = 1;  i<=MaxClients ; i++) 
 	if (IsClientConnected(i)) 
 	if (!IsClientSourceTV(i))	
 	if (IsFakeClient(i)) 	
 		{			
+		if (TeamToClear!=0) {if (PlayerTeam[i]==TeamToClear){BotKills[i]=0;	TeamToClear=0;}}
 		#if defined DEBUG
 		char clientName[32];
 		GetClientName(i, clientName, 31);
 		PrintToServer("%d.%s kills=%d",i,clientName, BotKills[i]);	
 		#endif
-		if (BotKills[i]==0){BotToKick[i]=true;CreateTimer(GetRandomFloat(0.1,1.0)*59,Kickbot,i,TIMER_FLAG_NO_MAPCHANGE);}else {BotKills[i]=0;}
+		if (BotKills[i]==0){BotToKick[i]=true;CreateTimer(GetRandomFloat(0.1,1.0)*59,Kickbot,i,TIMER_FLAG_NO_MAPCHANGE);}else {BotKills[i]=0;
+		}
 	}
 return Plugin_Continue;
 }	

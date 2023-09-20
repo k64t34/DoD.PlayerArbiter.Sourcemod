@@ -18,7 +18,7 @@
 //*Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
 #define noDEBUG 
 #define LOG
-#define PLUGIN_VERSION "1.5"
+#define PLUGIN_VERSION "1.6"
 #define PLUGIN_NAME "DoD player arbiter"
 #define PLUGIN_AUTHOR "Kom64t"
 #define GAME_DOD
@@ -43,6 +43,7 @@ bool g_awaitStopScoring=false;				// true - waiting, false - no waiting
 //char g_PLUGIN_NAME[]=PLUGIN_NAME;           // Plugin name
 int PlayerTeam[MAX_PLAYERS];				// Команда игрока int[] PlayerTeam = new int[MaxClients]			// Команда игрока
 int TeamHumanPlayerCount[DOD_TEAMS_COUNT];	// Number of human players in a team
+int TeamBotPlayerCount[DOD_TEAMS_COUNT];	// Number of bot players in a team
 char sndGong[]=SND_GONG;					// The sound of the beginning of scoring
 bool g_Scoring=false;						// Scoring in progress
 bool g_1stRestart=false;					// true - first round with scoring has already passed, false - no restart occur
@@ -129,7 +130,9 @@ public void OnMapStart(){
 	#endif
 	g_cntRound=0;	
 	TeamHumanPlayerCount[DOD_TEAM_ALLIES]=0;
-	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;	
+	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;		
+	TeamBotPlayerCount[DOD_TEAM_ALLIES]=0;
+	TeamBotPlayerCount[DOD_TEAM_AXIS]=0;	
 	ReSetTeamsScore();
 	#if defined DEBUG
 	PrintTeamHumanPlayerCount("OnMapStart");			
@@ -162,7 +165,8 @@ public void OnMapEnd(){
 g_Scoring=false;
 g_1stRestart=false;
 #if defined LOG
-LogMessage("[OnMapEnd] Round # %d. Teams:allies %d, axis %d. Score: allies %d(%d), axis %d(%d). ",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],GetTeamRoundsWon(DOD_TEAM_ALLIES),GetTeamScore(DOD_TEAM_ALLIES),GetTeamRoundsWon(DOD_TEAM_AXIS),GetTeamScore(DOD_TEAM_AXIS));
+if (GetTeamRoundsWon(DOD_TEAM_ALLIES)!=0 || GetTeamScore(DOD_TEAM_ALLIES)!=0 || GetTeamRoundsWon(DOD_TEAM_AXIS)!=0 || GetTeamScore(DOD_TEAM_AXIS)!=0)
+LogMessage("[OnMapEnd] Rounds # %d. Teams:allies %d, axis %d. Score: allies %d(%d), axis %d(%d). ",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],GetTeamRoundsWon(DOD_TEAM_ALLIES),GetTeamScore(DOD_TEAM_ALLIES),GetTeamRoundsWon(DOD_TEAM_AXIS),GetTeamScore(DOD_TEAM_AXIS));
 #endif
 }
 //**************************************************
@@ -170,32 +174,75 @@ stock void CalculateTeamHumanPlayerCount(){
 //**************************************************	
 	TeamHumanPlayerCount[DOD_TEAM_ALLIES]=0;
 	TeamHumanPlayerCount[DOD_TEAM_AXIS]=0;
+	TeamBotPlayerCount[DOD_TEAM_ALLIES]=0;
+	TeamBotPlayerCount[DOD_TEAM_AXIS]=0;
 	int Team,Class;
 	for (int i=1;i<=MaxClients;i++)
 	{
 		if (IsValidClient(i))
 		{
-			#if defined IGNORE_BOTS
-			if (!IsFakeClient(i))
-			#endif	
-			{
 			Team=GetClientTeam(i);
 			if (Team==DOD_TEAM_ALLIES || Team==DOD_TEAM_AXIS)
-				{
+			{
 				Class=GetDODPlayerClass(i)
-					if (Class!=DOD_NoClass)
-						{
-						PlayerTeam[i]=Team;
-						TeamHumanPlayerCount[Team]++;
-						}
+				if (Class!=DOD_NoClass)
+				{
+					PlayerTeam[i]=Team;
+					if (IsFakeClient(i)){TeamBotPlayerCount[Team]++;}
+					#if defined IGNORE_BOTS
+					if (!IsFakeClient(i))
+					#endif
+						{TeamHumanPlayerCount[Team]++;}
 				}
-				#if defined DEBUG
-				PrintTeamHumanPlayerCount("Event_PlayerTeam");			
-				#endif
 			}
+			#if defined DEBUG
+			PrintTeamHumanPlayerCount("Event_PlayerTeam");
+			#endif
 		}			
 	}	
 }
+
+//**************************************************
+public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){
+//**************************************************
+	int client=GetClientOfUserId(event.GetInt("userid"));
+	#if defined DEBUG
+	char eventName [32];event.GetName(eventName,31);
+	char clientName[32];GetClientName(client, clientName, 31);
+	DebugLog("[%s] #%d %s team %d->%d",eventName,client,clientName,event.GetInt("oldteam"),event.GetInt("team"));	
+	#endif			
+	int oldTeam=event.GetInt("oldteam");	
+	int newTeam=event.GetInt("team");	
+	if ((oldTeam==DOD_TEAM_ALLIES || oldTeam==DOD_TEAM_AXIS) && newTeam!=oldTeam )	
+	{
+		if (IsFakeClient(client)) 
+			TeamBotPlayerCount[oldTeam]=TeamBotPlayerCount[oldTeam]-1;
+		#if defined IGNORE_BOTS
+		if (!IsFakeClient(client))
+		#endif	
+		{TeamHumanPlayerCount[oldTeam]--;}
+		PlayerTeam[client]=0; // While no class has been selected player team set to 0. Its need to determinide than player change (not 1st set) class 
+		
+		if (g_Scoring)
+			{		
+			if (!g_awaitStopScoring)
+			if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1 || TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0)
+				{	
+				g_awaitStopScoring=true;
+				CreateTimer(15.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);
+				}
+			/*if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
+			{
+				g_1stRestart=false;
+				ReSetTeamsScore();
+			}*/
+			}
+	}		
+	#if defined DEBUG
+	PrintTeamHumanPlayerCount("Event_PlayerTeam");
+	#endif
+}
+
 //**************************************************
 public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcast){
 //**************************************************	
@@ -210,42 +257,45 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 	#if defined REFRESH_BOT
 	BotKills[client]=0;
 	BotToKick[client]=false;
-	#endif	
-	#if defined IGNORE_BOTS
-	if (!IsFakeClient(client))
 	#endif		
-	{		
+	#if defined DEBUG
+	//DebugLog("[%s]GetClientTeam[%s]=%d",eventName,clientName,GetClientTeam(client));
+	//DebugLog("[%s]PlayerTeam[%s]=%d",eventName,clientName,PlayerTeam[client]);		
+	#endif	
+	if (PlayerTeam[client]==0) // Player only change class (team remain at the same)
+	{
+		int Team=GetClientTeam(client);
+		PlayerTeam[client]=Team;
 		#if defined DEBUG
-		//DebugLog("[%s]GetClientTeam[%s]=%d",eventName,clientName,GetClientTeam(client));
-		//DebugLog("[%s]PlayerTeam[%s]=%d",eventName,clientName,PlayerTeam[client]);		
+		//DebugLog("[%s]GetClientTeam(%s)=%d",eventName,clientName,Team);			
+		//DebugLog("[%s]PlayerTeam[%s]=%d",eventName,clientName,PlayerTeam[client]);			
 		#endif	
-		if (PlayerTeam[client]==0) // Player only change class (team remain at the same)
-		{
-			int Team=GetClientTeam(client);
-			PlayerTeam[client]=Team;
-			#if defined DEBUG
-			//DebugLog("[%s]GetClientTeam(%s)=%d",eventName,clientName,Team);			
-			//DebugLog("[%s]PlayerTeam[%s]=%d",eventName,clientName,PlayerTeam[client]);			
-			#endif	
-			TeamHumanPlayerCount[Team]++;
-			#if defined DEBUG			
-			PrintTeamHumanPlayerCount(eventName);				
-			#endif	
-			if (!g_Scoring){		
-				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score)				
-				{
-					#if defined DEBUG
-					DebugLog("[%s]Start scoring",eventName);
-					DebugLog("[%s]g_Scoring=true;",eventName);
-					#endif	
-					g_Scoring=true;
-					//CreateTimer(10.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
-					StartScoring();
-				}
+		if (IsFakeClient(client)) TeamBotPlayerCount[Team]=TeamBotPlayerCount[Team]+1;
+		#if defined IGNORE_BOTS
+		if (!IsFakeClient(client))
+		#endif	
+		{TeamHumanPlayerCount[Team]++;}					
+		#if defined DEBUG			
+		PrintTeamHumanPlayerCount(eventName);				
+		#endif	
+		if (!g_Scoring){		
+			if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score)				
+			{
+				#if defined DEBUG
+				DebugLog("[%s]Start scoring",eventName);
+				DebugLog("[%s]g_Scoring=true;",eventName);
+				#endif	
+				g_Scoring=true;
+				//CreateTimer(10.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
+				StartScoring();
 			}
 		}
-	}	
+	}
+		
 }	
+
+
+
 //**************************************************
 //Action  StartScoring(Handle timer){
 void StartScoring(){
@@ -312,47 +362,7 @@ if (g_Scoring)
 }
 //return Plugin_Continue;
 }
-//**************************************************
-public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast){
-//**************************************************
-	int client=GetClientOfUserId(event.GetInt("userid"));
-	#if defined DEBUG
-	char eventName [32];event.GetName(eventName,31);
-	char clientName[32];GetClientName(client, clientName, 31);
-	DebugLog("[%s] #%d %s team %d->%d",eventName,client,clientName,event.GetInt("oldteam"),event.GetInt("team"));	
-	#endif
-	#if defined IGNORE_BOTS
-	if (!IsFakeClient(client))
-	#endif	
-		{
-		int oldTeam=event.GetInt("oldteam");	
-		int newTeam=event.GetInt("team");	
-		if ((oldTeam==DOD_TEAM_ALLIES || oldTeam==DOD_TEAM_AXIS) && newTeam!=oldTeam )	
-			{
-			TeamHumanPlayerCount[oldTeam]--;
-			PlayerTeam[client]=0; // While no class has been selected player team set to 0. Its need to determinide than player change (not 1st set) class 
-			
-			if (g_Scoring)
-				{		
-				if (!g_awaitStopScoring)
-				if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1 || TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0)
-					{	
-					g_awaitStopScoring=true;
-					CreateTimer(15.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);
-					}
-				/*if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
-				{
-					g_1stRestart=false;
-					ReSetTeamsScore();
-				}*/
-				}
-			}	
-		
-		}	
-	#if defined DEBUG
-	PrintTeamHumanPlayerCount("Event_PlayerTeam");			
-	#endif
-}
+
 //**************************************************
 Action  StopScoring(Handle timer){
 //**************************************************
@@ -451,10 +461,10 @@ if (g_Scoring)
 	#if defined LOG
 	LogToGame ("Round # %d. Allies %d player(s) Axis %d player(s)",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS]);
 	LogMessage("Round # %d. Teams:allies %d, axis %d. Score: allies %d(%d), axis %d(%d). ",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],GetTeamRoundsWon(DOD_TEAM_ALLIES),GetTeamScore(DOD_TEAM_ALLIES),GetTeamRoundsWon(DOD_TEAM_AXIS),GetTeamScore(DOD_TEAM_AXIS));
-	if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]<minPlayer_to_start_score)
+	if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]<minPlayer_to_start_score && !g_awaitStopScoring)
 		{
-		LogMessage("[Event_RoundActive] Invaled number  of players to start scoring. Round # %d. Teams:allies %d, axis %d. Needs %d",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
-		LogError  ("[Event_RoundActive] Invaled number  of players to start scoring. Round # %d. Teams:allies %d, axis %d. Needs %d",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
+		LogMessage("[Event_RoundActive] Invalid number  of players to start scoring. Round # %d. Teams:allies %d, axis %d. Needs %d",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
+		LogError  ("[Event_RoundActive] Invalid number  of players to start scoring. Round # %d. Teams:allies %d, axis %d. Needs %d",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],minPlayer_to_start_score);
 		}
 	#endif 
 	int HMS[3];GetTimeHMS(HMS);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1]);
