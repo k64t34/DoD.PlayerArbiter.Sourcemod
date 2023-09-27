@@ -18,7 +18,7 @@
 //*Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
 #define noDEBUG 
 #define LOG
-#define PLUGIN_VERSION "1.6"
+#define PLUGIN_VERSION "1.7"
 #define PLUGIN_NAME "DoD player arbiter"
 #define PLUGIN_AUTHOR "Kom64t"
 #define GAME_DOD
@@ -27,6 +27,7 @@
 #define IGNORE_BOTS  //for debug define IGNORE_BOTS
 #define noNO_COMMANDS 
 #define REFRESH_BOT   //ver 1.1
+#define AntiBotTK // ver 1.7
 
 #define SND_GONG "k64t\\whistle.mp3" 
 #define MSG_Start_scoring	"Start scoring"
@@ -40,6 +41,8 @@ char str_MSG_Resume_scoring[]=MSG_Resume_scoring;
 int g_cntRound=0;							// Scoring round counter ver 1.3
 int g_minutePrinted=-1;						// Last printed minute
 bool g_awaitStopScoring=false;				// true - waiting, false - no waiting
+Handle h_TimerScoring=INVALID_HANDLE;   //Handle timer
+
 //char g_PLUGIN_NAME[]=PLUGIN_NAME;           // Plugin name
 int PlayerTeam[MAX_PLAYERS];				// Команда игрока int[] PlayerTeam = new int[MaxClients]			// Команда игрока
 int TeamHumanPlayerCount[DOD_TEAMS_COUNT];	// Number of human players in a team
@@ -48,7 +51,8 @@ char sndGong[]=SND_GONG;					// The sound of the beginning of scoring
 bool g_Scoring=false;						// Scoring in progress
 bool g_1stRestart=false;					// true - first round with scoring has already passed, false - no restart occur
 bool g_Restarting=false;					// Command _restart 10 was sent
-int g_RoundStatus=0;						// Time period of round:0-Bonus,1-Start,2-Active
+int g_RoundStatus=0;						// Дает варнинг. Временно убрал использование переменной для праильной работы парсинга лога Бритва см.ниже комментарии 
+											// Time period of round:0-Bonus,1-Start,2-Active
 //ConVar 
 ConVar sm_arbiter_minPlayer_to_start_score;
 int minPlayer_to_start_score=0;
@@ -65,6 +69,11 @@ public Plugin myinfo =
 #if defined REFRESH_BOT
 #include "DODplayerArbiter.Refreshbots.inc"
 #endif
+
+#if defined AntiBotTK
+#include "DODplayerArbiter.AntiBotTK.inc"
+#endif
+
 #if defined DEBUG
 bool __test=false;
 //char  g_LOG[] = "DODplayerArbiter.log";
@@ -103,8 +112,13 @@ HookEvent("dod_point_captured",Event_point_captured, EventHookMode_Post);
 HookEvent("dod_bomb_planted",Event_bomb, EventHookMode_Post);
 HookEvent("dod_bomb_defused",Event_bomb, EventHookMode_Post);
 #endif 	
+#if defined AntiBotTK
+HookEvent("player_hurt",Event_player_hurt, EventHookMode_Pre);
+#endif 	
 }
+//***********************************************
 public void OnPluginEnd(){
+//***********************************************	
 #if defined DEBUG
 	DebugLog("OnPluginEnd");
 #endif	
@@ -120,7 +134,10 @@ UnhookEvent("dod_capture_blocked",Event_capture_blocked, EventHookMode_Post);
 UnhookEvent("dod_point_captured",Event_point_captured, EventHookMode_Post);
 UnhookEvent("dod_bomb_planted",Event_bomb, EventHookMode_Post);
 UnhookEvent("dod_bomb_defused",Event_bomb, EventHookMode_Post);
-#endif 		
+#endif 	
+#if defined AntiBotTK
+UnhookEvent("player_hurt",Event_player_hurt, EventHookMode_Pre);
+#endif 	
 }
 //**************************************************
 public void OnMapStart(){
@@ -150,7 +167,7 @@ public void OnMapStart(){
 	#endif
 	
 	#if defined REFRESH_BOT
-	CreateTimer(60.0,Refreshbot,0,TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	if (h_TimerRefreshbot==INVALID_HANDLE)h_TimerRefreshbot=CreateTimer(60.0,Refreshbot,0,TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	#endif
 	#if defined DEBUG
 	DebugLog("[OnMapStart] finish ");
@@ -164,6 +181,13 @@ public void OnMapEnd(){
 #endif
 g_Scoring=false;
 g_1stRestart=false;
+if (g_awaitStopScoring)
+{	
+	if (h_TimerScoring!=INVALID_HANDLE)
+	KillTimer(h_TimerScoring,true);
+	g_awaitStopScoring=false;
+}
+
 #if defined LOG
 if (GetTeamRoundsWon(DOD_TEAM_ALLIES)!=0 || GetTeamScore(DOD_TEAM_ALLIES)!=0 || GetTeamRoundsWon(DOD_TEAM_AXIS)!=0 || GetTeamScore(DOD_TEAM_AXIS)!=0)
 LogMessage("[OnMapEnd] Rounds # %d. Teams:allies %d, axis %d. Score: allies %d(%d), axis %d(%d). ",g_cntRound,TeamHumanPlayerCount[DOD_TEAM_ALLIES],TeamHumanPlayerCount[DOD_TEAM_AXIS],GetTeamRoundsWon(DOD_TEAM_ALLIES),GetTeamScore(DOD_TEAM_ALLIES),GetTeamRoundsWon(DOD_TEAM_AXIS),GetTeamScore(DOD_TEAM_AXIS));
@@ -229,7 +253,7 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 			if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]==minPlayer_to_start_score-1 || TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0)
 				{	
 				g_awaitStopScoring=true;
-				CreateTimer(15.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);
+				h_TimerScoring=CreateTimer(15.0,StopScoring,TIMER_FLAG_NO_MAPCHANGE);
 				}
 			/*if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]==0 && TeamHumanPlayerCount[DOD_TEAM_AXIS]==0) 
 			{
@@ -366,6 +390,7 @@ if (g_Scoring)
 //**************************************************
 Action  StopScoring(Handle timer){
 //**************************************************
+h_TimerScoring=INVALID_HANDLE;
 if (TeamHumanPlayerCount[DOD_TEAM_ALLIES]+TeamHumanPlayerCount[DOD_TEAM_AXIS]<minPlayer_to_start_score)
 	{
 	#if defined DEBUG

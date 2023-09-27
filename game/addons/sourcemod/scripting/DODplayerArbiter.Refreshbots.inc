@@ -1,4 +1,5 @@
 #if defined REFRESH_BOT
+Handle h_TimerRefreshbot=INVALID_HANDLE; //Handle timer for Refreshbot
 int BotKills[MAX_PLAYERS+1];				// Number usefull action of bot in last minute (frags, flag capture/blocking,bomb plant/defusing)
 bool BotToKick[MAX_PLAYERS+1];				// Bot in the kick queue(by random timer)
 //**************************************************

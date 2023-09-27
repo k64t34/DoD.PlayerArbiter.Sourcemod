@@ -104,7 +104,6 @@ for (int client = 1; client !=MAXPLAYERS ; client++)
 		}	
 	}	
 }
-
 //**************************************************
 public void OnClientConnected(int client){
 //**************************************************
