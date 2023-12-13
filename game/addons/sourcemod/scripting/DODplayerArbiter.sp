@@ -16,7 +16,7 @@
 //*   1.1 2023 The plugin refresh  bots every minute, simply removing all useless ones (no frags, no flag capture/blocking, no bomb plant/defusing).
 //*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
 //*Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
-#define noDEBUG 
+#define nDEBUG 
 #define LOG
 #define PLUGIN_VERSION "1.7"
 #define PLUGIN_NAME "DoD player arbiter"
@@ -60,7 +60,7 @@ public Plugin myinfo =
 {
     name = PLUGIN_NAME,
     author = PLUGIN_AUTHOR,
-    description = "Restart score, kick week bots",
+    description = "Restart score, kick week bots, less TK",
     version = PLUGIN_VERSION,
     url = "https://github.com/k64t34/DoD.PlayerArbiter.Sourcemod.git"
 };
@@ -290,10 +290,10 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 	{
 		int Team=GetClientTeam(client);
 		PlayerTeam[client]=Team;
-		#if defined DEBUG
+		//#if defined DEBUG
 		//DebugLog("[%s]GetClientTeam(%s)=%d",eventName,clientName,Team);			
 		//DebugLog("[%s]PlayerTeam[%s]=%d",eventName,clientName,PlayerTeam[client]);			
-		#endif	
+		//#endif	
 		if (IsFakeClient(client)) TeamBotPlayerCount[Team]=TeamBotPlayerCount[Team]+1;
 		#if defined IGNORE_BOTS
 		if (!IsFakeClient(client))
@@ -309,27 +309,21 @@ public void Event_PlayerClass(Event event, const char[] name,  bool dontBroadcas
 				DebugLog("[%s]Start scoring",eventName);
 				DebugLog("[%s]g_Scoring=true;",eventName);
 				#endif	
-				g_Scoring=true;
-				//CreateTimer(10.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
-				StartScoring();
+				g_Scoring=true;				
+				StartScoring();//CreateTimer(10.0,StartScoring,TIMER_FLAG_NO_MAPCHANGE);					
 			}
 		}
-	}
-		
+	}		
 }	
-
-
-
 //**************************************************
-//Action  StartScoring(Handle timer){
-void StartScoring(){
+void StartScoring(){ //Action  StartScoring(Handle timer){
 //**************************************************
 #if defined DEBUG
 DebugLog("[StartScoring] Begin");
 #endif	
 if (g_Scoring) 
 {
-	//убрал для парсинга лога if (g_RoundStatus==2 ) //Если состояние раунда между стартом и победой, то _restart
+	//убрал для парсинга лога Britvы // if (g_RoundStatus==2 ) //Если состояние раунда между стартом и победой, то _restart
 	if (!g_1stRestart ) 
 		{
 		g_Restarting=true;
@@ -471,8 +465,18 @@ void PrintTeamHumanPlayerCount (char[] FromProc){
 #endif 
 public void PrintTime(){int HMS[3];
 if (g_minutePrinted!=HMS[1]){g_minutePrinted=HMS[1];GetTimeHMS(HMS);PrintToChatAll("%02d:%02d",HMS[0],HMS[1]);PrintHintTextToAll("%02d:%02d",HMS[0],HMS[1]);}}
-public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){EmitSoundToAll(sndGong);						}
-public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){g_RoundStatus=1;}
+public void Event_RoundRestart(Event event, const char[] name, bool dontBroadcast){
+	#if defined DEBUG
+	DebugLog("Event_RoundRestart");
+	#endif 	
+	EmitSoundToAll(sndGong);
+	}
+public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast){
+	#if defined DEBUG
+	DebugLog("Event_RoundStart");
+	#endif 
+	g_RoundStatus=1;
+	}
 public void Event_RoundActive(Event event, const char[] name, bool dontBroadcast){
 #if defined DEBUG
 	DebugLog("Event_RoundActive");
