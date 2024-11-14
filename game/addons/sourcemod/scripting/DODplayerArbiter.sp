@@ -17,7 +17,7 @@
 //*   1.2 2023 The plugin reset, save,restore scoring when  start, stop, resume scoring.
 //*   1.8 2023 Add team Balance
 //*Параметры запуска из Notepad++ по F5 c:\Users\skorik\source\repos\sourcemod-1.10.0-git6502-windows\addons\sourcemod\scripting\SMcompiler.exe  $(FULL_CURRENT_PATH)
-#define nDEBUG 
+#define DEBUG 
 #define LOG
 #define PLUGIN_VERSION "1.8"
 #define PLUGIN_NAME "DoD player arbiter"
@@ -32,7 +32,7 @@
 #define WEAPON_BALANCE_WARN // ver 1.8
 #define noBALANCE // ver 1.9
 #if defined DEBUG  
-#define nDEBUG_A   //Arbiter 
+#define DEBUG_A   //Arbiter 
 #define DEBUG_WBW //WEAPON_BALANCE_WARN											
 #endif 
 
@@ -292,7 +292,7 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 	int oldTeam=event.GetInt("oldteam");	
 	int newTeam=event.GetInt("team");	
 	int oldClass=PlayerClass[client];//GetDODPlayerClass(client);	
-	#if defined DEBUG_A || defined DEBUG_WBW
+	#if defined DEBUG_A || defined DEBUG_WBW || defined DEBUG
 	char eventName [32];event.GetName(eventName,31);
 	char clientName[32];GetClientName(client, clientName, 31);
 	DebugLog("[%s] #%d %s team %d->%d class var=%d func=%d",eventName,client,clientName,oldTeam,newTeam,PlayerClass[client],GetDODPlayerClass(client));	
@@ -307,13 +307,12 @@ public void Event_PlayerTeam(Event event, const char[] name,  bool dontBroadcast
 		#endif	
 			{TeamHumanPlayerCount[oldTeam]--;g_PlayersCount--;
 			#if defined WEAPON_BALANCE_WARN		
-			PlayerClass[client]=DOD_NoClass;
-			PlayerClassCount[oldTeam][oldClass]--;
-			#if defined DEBUG_WBW
+			PlayerClass[client]=DOD_NoClass;			
+			#if defined DEBUG
 			DebugLog("[%s] PlayerClass[%d]==%d",eventName,client,PlayerClass[client]);			
 			DebugLog("[%s] PlayerClassCount[%d][%d]-- -> %d",eventName,oldTeam,oldClass,PlayerClassCount[oldTeam][oldClass]);	
 			#endif
-				
+			PlayerClassCount[oldTeam][oldClass]--;	
 				#if defined LOG				
 				if (PlayerClassCount[oldTeam][oldClass]<0)
 					LogMessage("[Event_PlayerTeam] PlayerClassCount[%d][%d]=%d  < 0", oldTeam,oldClass,PlayerClassCount[oldTeam][oldClass]); 
